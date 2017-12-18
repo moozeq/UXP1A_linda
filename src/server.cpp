@@ -66,8 +66,12 @@ int main() {
 
 	inFIFO >> *req;
 	cout<<"Request transfered: "<<endl;
-	pthread_t thr;
-	pthread_create(&thr, NULL, &service, (void*)req);
+	//pthread_t thr;
+	//pthread_create(&thr, NULL, &service, (void*)req);
+
+	cout<<"request from: " << req->procId <<endl;
+	cout<<"request tuple: "<< req->tuple->elems[0].pattern;
+
 
 	unlink(serverPath);
 	cout<<"Server's pipe's been unlinked"<<endl;

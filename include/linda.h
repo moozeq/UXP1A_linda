@@ -1,10 +1,3 @@
-/*
- * Request.h
- *
- *  Created on: Dec 15, 2017
- *      Author: piotr
- */
-
 #include <unistd.h>
 #include <time.h>
 #include <string>
@@ -52,14 +45,14 @@ public:
 };
 
 std::ostream& operator<<(std::ostream &os, const Request& req) {
-	os << req.procId;
-	os << req.reqType;
-	os << req.timeout;
-	os << req.tuple->elems.size();
-	for (int i = 0; i < req.tuple->elems.size(); ++i) {
-		os << req.tuple->elems[i].isString;
-		os << req.tuple->elems[i].pattern.length();
-		os << req.tuple->elems[i].pattern;
+	os << req.procId << std::endl;
+	os << req.reqType << std::endl;
+	os << req.timeout << std::endl;
+	os << req.tuple->elems.size() << std::endl;
+	for (unsigned i = 0; i < req.tuple->elems.size(); ++i) {
+		os << req.tuple->elems[i].isString << std::endl;
+		os << req.tuple->elems[i].pattern.length() << std::endl;
+		os << req.tuple->elems[i].pattern << std::endl;
 	}
 	return os;
 }
@@ -72,16 +65,15 @@ std::istream& operator>>(std::istream &is, Request& req) {
 	Tuple *tuple = new Tuple();
 	unsigned elemsCount;
 	is >> elemsCount;
-	for (int i = 0; i < elemsCount; ++i) {
+	for (unsigned i = 0; i < elemsCount; ++i) {
 		unsigned strSize;
 		bool isString;
+		std::string tmp;
 		is >> isString;
 		is >> strSize;
-		char* tmp = new char[strSize];
-		is.get(tmp, strSize + 1);
+		is >> tmp;
 		Elem *el = new Elem(isString, tmp);
 		tuple->elems.push_back(*el);
-		delete[] tmp;
 	}
 	req.tuple = tuple;
 	return is;

@@ -16,7 +16,6 @@
 #include <vector>
 #include <signal.h>
 #include "linda.h"
-#define BUFFSIZE 256
 
 using namespace std;
 string pipePath = "/tmp/fifo.";
