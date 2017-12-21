@@ -35,7 +35,7 @@ public:
 	Tuple* tuple;
 
 	friend std::ostream& operator<<(std::ostream &os, const Request& req);
-	friend std::istream& operator>>(std::istream &is, const Request& req);
+	friend std::istream& operator>>(std::istream &is, Request& req);
 	Request() {
 		procId = 0;
 		reqType = 0;
@@ -51,7 +51,6 @@ std::ostream& operator<<(std::ostream &os, const Request& req) {
 	os << req.tuple->elems.size() << std::endl;
 	for (unsigned i = 0; i < req.tuple->elems.size(); ++i) {
 		os << req.tuple->elems[i].isString << std::endl;
-		os << req.tuple->elems[i].pattern.length() << std::endl;
 		os << req.tuple->elems[i].pattern << std::endl;
 	}
 	return os;
@@ -66,15 +65,54 @@ std::istream& operator>>(std::istream &is, Request& req) {
 	unsigned elemsCount;
 	is >> elemsCount;
 	for (unsigned i = 0; i < elemsCount; ++i) {
-		unsigned strSize;
 		bool isString;
 		std::string tmp;
 		is >> isString;
-		is >> strSize;
 		is >> tmp;
 		Elem *el = new Elem(isString, tmp);
 		tuple->elems.push_back(*el);
 	}
 	req.tuple = tuple;
+	return is;
+}
+
+class Reply
+{
+public:
+	bool isFound;
+	Tuple* tuple;
+	friend std::ostream& operator<<(std::ostream &os, const Reply& rep);
+	friend std::istream& operator>>(std::istream &is, Reply& rep);
+	Reply() {
+		isFound = false;
+		tuple = new Tuple();
+	}
+};
+
+std::ostream& operator<<(std::ostream &os, const Reply& rep) {
+	os << rep.isFound << std::endl;
+	os << rep.tuple->elems.size() << std::endl;
+	for (unsigned i = 0; i < rep.tuple->elems.size(); ++i) {
+		os << rep.tuple->elems[i].isString << std::endl;
+		os << rep.tuple->elems[i].pattern << std::endl;
+	}
+	return os;
+}
+
+std::istream& operator>>(std::istream &is, Reply& rep) {
+	is >> rep.isFound;
+
+	Tuple *tuple = new Tuple();
+	unsigned elemsCount;
+	is >> elemsCount;
+	for (unsigned i = 0; i < elemsCount; ++i) {
+		bool isString;
+		std::string tmp;
+		is >> isString;
+		is >> tmp;
+		Elem *el = new Elem(isString, tmp);
+		tuple->elems.push_back(*el);
+	}
+	rep.tuple = tuple;
 	return is;
 }

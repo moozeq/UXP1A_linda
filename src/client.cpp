@@ -1,9 +1,3 @@
-/*
- * main.cpp
- *
- *  Created on: Dec 15, 2017
- *      Author: piotr
- */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -16,6 +10,7 @@
 #include <vector>
 #include <signal.h>
 #include "linda.h"
+#define BUFFSIZE 256
 
 using namespace std;
 string pipePath = "/tmp/fifo.";
@@ -55,16 +50,21 @@ int main() {
 
 	string str = "hello";
 	Request *req = new Request();
-	Elem *el =  new Elem(true, str);
+	Elem *el = new Elem(true, str);
 	req->procId = getpid();
 	req->reqType = 0;
 	req->timeout = 1;
 	req->tuple->elems.push_back(*el);
-	while(1) {
-		cout<<"Tuple's been sent"<<endl;
-		outFIFO << *req;
-		break;
-	}
+
+	outFIFO << *req;
+	cout<<"Tuple's been sent"<<endl;
+
+	Reply* rep = new Reply();
+	ifstream inFIFO(pipePath.c_str(), ifstream::binary);
+	cout<<"Waiting for reply"<<endl;
+	inFIFO >> *rep;
+
+	cout<<"Reply: "<<rep->tuple->elems[0].pattern<<endl;
 	unlink(pipePath.c_str());
 	return 0;
 }
