@@ -10,9 +10,11 @@
 #include <signal.h>
 #include <pthread.h>
 #include <fstream>
+#include "Request.h"
+#include "Reply.h"
 
-#include "linda.h"
 #define BUFFSIZE 256
+
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
 

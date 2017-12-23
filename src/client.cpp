@@ -9,7 +9,9 @@
 #include <string>
 #include <vector>
 #include <signal.h>
-#include "linda.h"
+#include "Request.h"
+#include "Reply.h"
+
 #define BUFFSIZE 256
 
 using namespace std;
