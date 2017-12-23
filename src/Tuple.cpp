@@ -7,13 +7,13 @@
 
 #include "Tuple.h"
 
-Tuple::Tuple()
-{
-	elementsCount = 0;
-}
-
-Tuple::~Tuple()
-{
-	// TODO Auto-generated destructor stub
-}
+//Tuple::Tuple()
+//{
+//	elementsCount = 0;
+//}
+//
+//Tuple::~Tuple()
+//{
+//	// TODO Auto-generated destructor stub
+//}
 

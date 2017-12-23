@@ -42,6 +42,10 @@ public:
 		timeout = 0;
 		tuple = new Tuple();
 	}
+	~Request(){
+		if(tuple != nullptr)
+			delete tuple;
+	}
 };
 
 std::ostream& operator<<(std::ostream &os, const Request& req) {
@@ -69,9 +73,11 @@ std::istream& operator>>(std::istream &is, Request& req) {
 		std::string tmp;
 		is >> isString;
 		is >> tmp;
-		Elem *el = new Elem(isString, tmp);
-		tuple->elems.push_back(*el);
+		Elem el = Elem(isString, tmp);
+		tuple->elems.push_back(el);
 	}
+	if(req.tuple != nullptr)
+		delete req.tuple;
 	req.tuple = tuple;
 	return is;
 }
@@ -86,6 +92,10 @@ public:
 	Reply() {
 		isFound = false;
 		tuple = new Tuple();
+	}
+	~Reply(){
+		if(tuple != nullptr)
+			delete tuple;
 	}
 };
 
@@ -110,9 +120,11 @@ std::istream& operator>>(std::istream &is, Reply& rep) {
 		std::string tmp;
 		is >> isString;
 		is >> tmp;
-		Elem *el = new Elem(isString, tmp);
-		tuple->elems.push_back(*el);
+		Elem el = Elem(isString, tmp);
+		tuple->elems.push_back(el);
 	}
+	if(rep.tuple != nullptr)
+		delete rep.tuple;
 	rep.tuple = tuple;
 	return is;
 }

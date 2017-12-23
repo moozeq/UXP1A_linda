@@ -47,8 +47,8 @@ Reply* search(Tuple* reqTup, unsigned opType) {
 	Reply* reply = new Reply();
 	Tuple* tuple = new Tuple();
 	string str = "ehllo";
-	Elem *el = new Elem(true, str);
-	tuple->elems.push_back(*el);
+	Elem el = Elem(true, str);
+	tuple->elems.push_back(el);
 	reply->isFound = true;
 	reply->tuple = tuple;
 	return reply;
@@ -79,6 +79,7 @@ void* service(void* oReq) {
 
 	outFIFO << *reply;
 	cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
+	delete reply;
 	return 0;
 }
 
@@ -97,5 +98,7 @@ int main() {
 	service((void*)req);
 	unlink(serverPath);
 	cout<<"Server's pipe's been unlinked"<<endl;
+
+	delete req;
 	return 0;
 }

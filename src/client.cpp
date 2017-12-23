@@ -50,11 +50,11 @@ int main() {
 
 	string str = "hello";
 	Request *req = new Request();
-	Elem *el = new Elem(true, str);
+	Elem el = Elem(true, str);
 	req->procId = getpid();
 	req->reqType = 0;
 	req->timeout = 1;
-	req->tuple->elems.push_back(*el);
+	req->tuple->elems.push_back(el);
 
 	outFIFO << *req;
 	cout<<"Tuple's been sent"<<endl;
@@ -66,5 +66,8 @@ int main() {
 
 	cout<<"Reply: "<<rep->tuple->elems[0].pattern<<endl;
 	unlink(pipePath.c_str());
+
+	delete rep;
+	delete req;
 	return 0;
 }

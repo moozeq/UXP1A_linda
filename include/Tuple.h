@@ -11,21 +11,21 @@
 #include <string>
 #include <vector>
 
-struct Tuple
-{
-public:
-	Tuple();
-	virtual ~Tuple();
-
-	struct Elem
-	{
-		/* type: 0 - integer, 1 - string */
-		bool type;
-		std::string pattern;
-	};
-
-	std::vector<Elem> elements;
-	size_t elementsCount;
-};
+//struct Tuple
+//{
+//public:
+//	Tuple();
+//	virtual ~Tuple();
+//
+//	struct Elem
+//	{
+//		/* type: 0 - integer, 1 - string */
+//		bool type;
+//		std::string pattern;
+//	};
+//
+//	std::vector<Elem> elements;
+//	size_t elementsCount;
+//};
 
 #endif /* TUPLE_H_ */
