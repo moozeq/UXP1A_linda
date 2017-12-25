@@ -45,3 +45,14 @@ std::istream& operator>>(std::istream &is, Request& req) {
 	req.tuple = tuple;
 	return is;
 }
+
+/**
+ * 	@brief	Sets new Tuple object to the Request
+ *
+ * 	@param	tuple is Tuple object which is assigned to this request.
+ */
+void Request::setTuple(Tuple * _tuple){
+	if(this->tuple != nullptr)
+		delete tuple;
+	tuple = _tuple;
+}

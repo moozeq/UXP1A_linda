@@ -36,8 +36,17 @@ std::istream& operator>>(std::istream &is, Reply& rep) {
 		Elem el = Elem(isString, tmp);
 		tuple->elems.push_back(el);
 	}
-	if(rep.tuple != nullptr)
-		delete rep.tuple;
-	rep.tuple = tuple;
+	rep.setTuple(tuple);
 	return is;
+}
+
+/**
+ * 	@brief	Sets new Tuple object to the Reply
+ *
+ * 	@param	tuple is Tuple object which is assigned to this reply.
+ */
+void Reply::setTuple(Tuple * _tuple){
+	if(this->tuple != nullptr)
+		delete tuple;
+	tuple = _tuple;
 }

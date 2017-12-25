@@ -23,5 +23,7 @@ public:
 		if(tuple != nullptr)
 			delete tuple;
 	}
+
+	void setTuple(Tuple * _tuple);
 };
 #endif /* REPLY_H_ */

@@ -52,7 +52,7 @@ Reply* search(Tuple* reqTup, unsigned opType) {
 	Elem el = Elem(true, str);
 	tuple->elems.push_back(el);
 	reply->isFound = true;
-	reply->tuple = tuple;
+	reply->setTuple(tuple);
 	return reply;
 }
 

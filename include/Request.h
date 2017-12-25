@@ -27,6 +27,8 @@ public:
 		if(tuple != nullptr)
 			delete tuple;
 	}
+
+	void setTuple(Tuple * _tuple);
 };
 
 #endif /* REQUEST1_H_ */
