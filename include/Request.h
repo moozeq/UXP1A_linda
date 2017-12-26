@@ -1,35 +1,34 @@
-/*
- * Request.h
- *
- *  Created on: Dec 15, 2017
- *      Author: piotr
- */
-
 #ifndef REQUEST_H_
 #define REQUEST_H_
 
-#include <unistd.h>
-#include <time.h>
-
 #include "Tuple.h"
 
-enum RequestType{
-	inputTuple,
-	outputTuple,
-	readTuple
-};
-
+/**
+ * 	@brief	Class that represents client request. Request object
+ * 	agregates tuple which is the subject of this request.
+ */
 class Request
 {
 public:
-	Request();
-	virtual ~Request();
+	unsigned procId;
+	unsigned reqType; //0 - input, 1 - output, 2 - read
+	unsigned timeout; //in seconds
+	Tuple* tuple;
 
-private:
-	pid_t procId;
-	RequestType reqType;
-	time_t timeout;
-	Tuple tuple;
+	friend std::ostream& operator<<(std::ostream &os, const Request& req);
+	friend std::istream& operator>>(std::istream &is, Request& req);
+	Request() {
+		procId = 0;
+		reqType = 0;
+		timeout = 0;
+		tuple = new Tuple();
+	}
+	~Request(){
+		if(tuple != nullptr)
+			delete tuple;
+	}
+
+	void setTuple(Tuple * _tuple);
 };
 
-#endif /* REQUEST_H_ */
+#endif /* REQUEST1_H_ */

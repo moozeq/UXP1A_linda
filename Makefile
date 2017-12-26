@@ -11,12 +11,12 @@ INC = -I./include
 SRC_DIR = src
 
 # Compiler flags
-CFLAGS = -Wall $(INC)
+CFLAGS = -Wall $(INC) -std=c++11
 
 #
 # Project files
 #
-COMMONSRCS = $(SRC_DIR)/Tuple.cpp $(SRC_DIR)/Request.cpp
+COMMONSRCS = $(SRC_DIR)/Tuple.cpp $(SRC_DIR)/Request.cpp $(SRC_DIR)/Reply.cpp
 CLIENTSRCS = $(COMMONSRCS) $(SRC_DIR)/client.cpp
 SERVERSRCS = $(COMMONSRCS) $(SRC_DIR)/server.cpp
 

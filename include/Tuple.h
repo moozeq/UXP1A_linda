@@ -1,31 +1,42 @@
-/*
- * Tuple.h
- *
- *  Created on: Dec 15, 2017
- *      Author: piotr
- */
-
 #ifndef TUPLE_H_
 #define TUPLE_H_
 
+#include <unistd.h>
+#include <time.h>
 #include <string>
 #include <vector>
+#include <fstream>
 
-struct Tuple
+class Elem;
+
+/**
+ * 	@brief	Class that represents single tuple in tuple space.
+ * 	Contains vector of Elem objects.
+ */
+class Tuple
 {
 public:
-	Tuple();
-	virtual ~Tuple();
+	std::vector<Elem> elems;
+};
 
-	struct Elem
-	{
-		/* type: 0 - integer, 1 - string */
-		bool type;
-		std::string pattern;
-	};
+/**
+ * 	@brief	Class that represents single element in the tuple.
+ * 	It is defined as a string or integer data type using its members.
+ */
+class Elem
+{
+public:
+	bool isString;
+	std::string pattern;
 
-	std::vector<Elem> elements;
-	size_t elementsCount;
+	Elem(bool isString, std::string pattern) {
+		this->isString = isString;
+		this->pattern = pattern;
+	}
+	Elem(bool isString, char* pattern) {
+		this->isString = isString;
+		this->pattern = pattern;
+	}
 };
 
 #endif /* TUPLE_H_ */
