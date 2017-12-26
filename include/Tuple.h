@@ -17,6 +17,8 @@ class Tuple
 {
 public:
 	std::vector<Elem> elems;
+
+	bool operator==(const Tuple & other);
 };
 
 /**
