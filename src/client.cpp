@@ -50,23 +50,24 @@ int main() {
 
 	ofstream outFIFO(serverPath, ofstream::binary);
 
-	string str = "hello";
 	Request *req = new Request();
-	Elem el = Elem(true, str);
+	Tuple * tup = new Tuple({{true, std::string("krotka")},
+		{true, std::string("testowa")},{false, std::string("3")}});
 	req->procId = getpid();
-	req->reqType = 0;
+	req->reqType = Request::Read;
 	req->timeout = 1;
-	req->tuple->elems.push_back(el);
+	req->setTuple(tup);
 
 	outFIFO << *req;
-	cout<<"Tuple's been sent"<<endl;
+	cout<<"Request for tuple has been sent"<<endl;
 
 	Reply* rep = new Reply();
 	ifstream inFIFO(pipePath.c_str(), ifstream::binary);
 	cout<<"Waiting for reply"<<endl;
 	inFIFO >> *rep;
 
-	cout<<"Reply: "<<rep->tuple->elems[0].pattern<<endl;
+	cout<<"Reply: "<<std::endl;
+	cout<<*(rep->tuple);
 	unlink(pipePath.c_str());
 
 	delete rep;

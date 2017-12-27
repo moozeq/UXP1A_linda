@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 #include <fstream>
-
-class Elem;
+#include <initializer_list>
+#include <functional>
+#include <ostream>
+#include "Elem.h"
 
 /**
  * 	@brief	Class that represents single tuple in tuple space.
@@ -18,27 +20,34 @@ class Tuple
 public:
 	std::vector<Elem> elems;
 
-	bool operator==(const Tuple & other);
+	friend std::ostream & operator<<(std::ostream & os, const Tuple & tuple);
+
+	Tuple(){}
+	Tuple(std::initializer_list<Elem> init)
+	      : elems(init)
+	    { }
+	~Tuple(){}
 };
 
-/**
- * 	@brief	Class that represents single element in the tuple.
- * 	It is defined as a string or integer data type using its members.
- */
-class Elem
+bool operator ==(const Tuple & first, const Tuple & second);
+
+std::ostream & operator<<(std::ostream & os, const Tuple & tuple);
+
+namespace std
 {
-public:
-	bool isString;
-	std::string pattern;
-
-	Elem(bool isString, std::string pattern) {
-		this->isString = isString;
-		this->pattern = pattern;
-	}
-	Elem(bool isString, char* pattern) {
-		this->isString = isString;
-		this->pattern = pattern;
-	}
-};
+    template <>
+    struct hash<Tuple>
+    {
+        size_t operator()(const Tuple& t) const
+        {
+            size_t hashValue = t.elems.size();
+            for(const Elem & e : t.elems)
+            {
+            	hashValue ^= (hash<std::string>()(e.pattern) << (int)e.isString);
+            }
+            return hashValue;
+        }
+    };
+}
 
 #endif /* TUPLE_H_ */

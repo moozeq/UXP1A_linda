@@ -45,7 +45,7 @@ std::istream& operator>>(std::istream &is, Reply& rep) {
  *
  * 	@param	tuple is Tuple object which is assigned to this reply.
  */
-void Reply::setTuple(Tuple * _tuple){
+void Reply::setTuple(const Tuple * _tuple){
 	if(this->tuple != nullptr)
 		delete tuple;
 	tuple = _tuple;

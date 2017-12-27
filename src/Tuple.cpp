@@ -1,14 +1,21 @@
 #include "Tuple.h"
 
-bool Tuple::operator==(const Tuple & other){
-	if(elems.size() != other.elems.size())
+bool operator ==(const Tuple & first, const Tuple & second){
+	if(first.elems.size() != second.elems.size())
 		return false;
-	auto it1 = elems.begin();
-	auto it2 = other.elems.begin();
-	for(; it1 != elems.end() && it2 != other.elems.end(); ++it1, ++it2){
+	auto it1 = first.elems.begin();
+	auto it2 = second.elems.begin();
+	for(; it1 != first.elems.end() && it2 != second.elems.end(); ++it1, ++it2){
 		if(it1->isString != it2->isString ||
 				it1->pattern != it2->pattern)
 			return false;
 	}
 	return true;
+}
+
+std::ostream & operator<<(std::ostream & os, const Tuple & tuple)
+{
+	for(const Elem & e : tuple.elems)
+		os << std::boolalpha << e.isString << ", " << e.pattern << std::endl;
+	return os;
 }

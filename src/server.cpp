@@ -10,13 +10,17 @@
 #include <signal.h>
 #include <pthread.h>
 #include <fstream>
+#include <unordered_set>
 #include "Request.h"
 #include "Reply.h"
+
 
 #define BUFFSIZE 256
 
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
+
+std::unordered_set<Tuple> tupleSpace;
 
 void sig_handler(int signo) {
 	if(signo == SIGINT) {
@@ -45,14 +49,19 @@ int init() {
 	return 0;
 }
 
-Reply* search(Tuple* reqTup, unsigned opType) {
+Reply* search(const Tuple* reqTup, unsigned opType) {
 	Reply* reply = new Reply();
-	Tuple* tuple = new Tuple();
-	string str = "ehllo";
-	Elem el = Elem(true, str);
-	tuple->elems.push_back(el);
-	reply->isFound = true;
-	reply->setTuple(tuple);
+	unordered_set<Tuple>::iterator tupleIter = tupleSpace.find(*reqTup);
+	if(tupleIter != tupleSpace.end())
+	{
+		reply->isFound = true;
+		Tuple * foundTupleCopy = new Tuple(*tupleIter);
+		reply->setTuple(foundTupleCopy);
+	}
+	else
+	{
+		reply->isFound = false;
+	}
 	return reply;
 }
 
@@ -61,11 +70,11 @@ void* service(void* oReq) {
 	cout<<"request from: " << req->procId <<endl;
 	cout<<"request type: ";
 	switch(req->reqType) {
-		case 0:
+		case Request::Input:
 			cout<<"input";break;
-		case 1:
+		case Request::Output:
 			cout<<"output";break;
-		case 2:
+		case Request::Read:
 			cout<<"read";break;
 	}
 	cout<<endl<<"request tuple: ";
@@ -88,6 +97,12 @@ void* service(void* oReq) {
 int main() {
 	if (init() != 0)
 		return 0;
+
+	// Tuple Space test
+	Tuple tup{{true, std::string("tekst")}, {false, std::string("23")}};
+	tupleSpace.insert(tup);
+	tupleSpace.insert({{true, std::string("krotka")},
+		{true, std::string("testowa")},{false, std::string("3")}});
 
 	ifstream inFIFO(serverPath, ifstream::binary);
 

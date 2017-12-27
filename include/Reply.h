@@ -12,7 +12,7 @@ class Reply
 {
 public:
 	bool isFound;
-	Tuple* tuple;
+	const Tuple* tuple;
 	friend std::ostream& operator<<(std::ostream &os, const Reply& rep);
 	friend std::istream& operator>>(std::istream &is, Reply& rep);
 	Reply() {
@@ -24,6 +24,6 @@ public:
 			delete tuple;
 	}
 
-	void setTuple(Tuple * _tuple);
+	void setTuple(const Tuple * _tuple);
 };
 #endif /* REPLY_H_ */

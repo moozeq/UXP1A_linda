@@ -8,7 +8,7 @@
  */
 std::ostream& operator<<(std::ostream &os, const Request& req) {
 	os << req.procId << std::endl;
-	os << req.reqType << std::endl;
+	os << (int)(req.reqType) << std::endl;
 	os << req.timeout << std::endl;
 	os << req.tuple->elems.size() << std::endl;
 	for (unsigned i = 0; i < req.tuple->elems.size(); ++i) {
