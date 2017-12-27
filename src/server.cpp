@@ -20,7 +20,7 @@
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
 
-std::unordered_set<Tuple> tupleSpace;
+std::unordered_set<Tuple> tupleSpace;	// Global tuple space
 
 void sig_handler(int signo) {
 	if(signo == SIGINT) {
@@ -98,7 +98,7 @@ int main() {
 	if (init() != 0)
 		return 0;
 
-	// Tuple Space test
+	// Tuple Space test data
 	Tuple tup{{true, std::string("tekst")}, {false, std::string("23")}};
 	tupleSpace.insert(tup);
 	tupleSpace.insert({{true, std::string("krotka")},

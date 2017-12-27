@@ -23,16 +23,24 @@ public:
 	friend std::ostream & operator<<(std::ostream & os, const Tuple & tuple);
 
 	Tuple(){}
-	Tuple(std::initializer_list<Elem> init)
-	      : elems(init)
-	    { }
+	Tuple(std::initializer_list<Elem> init) : elems(init)	{}
 	~Tuple(){}
 };
 
+/**
+ * 	@brief	Function which provides operator== for Tuple objects comparison.
+ */
 bool operator ==(const Tuple & first, const Tuple & second);
 
+/**
+ * 	@brief	operator<< for Tuple class.
+ */
 std::ostream & operator<<(std::ostream & os, const Tuple & tuple);
 
+/**
+ *	@brief	Struct which provides functor - hash function
+ *	for std::unordered_set tuple space.
+ */
 namespace std
 {
     template <>

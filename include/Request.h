@@ -4,6 +4,9 @@
 #include "Tuple.h"
 #include <type_traits>
 
+/**
+ * 	@brief	operator>> for conversion from int to any enum type.
+ */
 template<typename T>
 typename std::enable_if<std::is_enum<T>::value, std::istream&>::type
 operator >>(std::istream &is, T& enumVariable)
