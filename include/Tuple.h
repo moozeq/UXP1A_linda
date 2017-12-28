@@ -49,9 +49,11 @@ namespace std
         size_t operator()(const Tuple& t) const
         {
             size_t hashValue = t.elems.size();
+            int counter = 0;
             for(const Elem & e : t.elems)
             {
-            	hashValue ^= (hash<std::string>()(e.pattern) << (int)e.isString);
+            	hashValue |= ((int)e.isString << (counter%32));
+            	++counter;
             }
             return hashValue;
         }
