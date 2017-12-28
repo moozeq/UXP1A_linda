@@ -21,6 +21,7 @@ using namespace std;
 const char* serverPath = "/tmp/fifo.server";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
+bool childrenActiveFlag;
 
 std::unordered_set<Tuple> tupleSpace;	// Global tuple space
 
@@ -29,6 +30,11 @@ void sig_handler(int signo) {
 		unlink(serverPath);
 		cout<<"Server's pipe's been unlinked"<<endl;
 	}
+}
+
+void sigHandlerExit(int signo)
+{
+	pthread_exit(NULL);
 }
 
 void createServerPipe(const char* serverPath) {
@@ -47,10 +53,14 @@ int init() {
 		return 1;
 	}
 	signal(SIGINT, sig_handler);
+	signal(SIGUSR1, sigHandlerExit);
 	createServerPipe(serverPath);
 	return 0;
 }
 
+/**
+ * 	@brief	Finds tuple in tuple space and returns reply.
+ */
 Reply* search(const Tuple* reqTup, unsigned opType) {
 	Reply* reply = new Reply();
 	unordered_set<Tuple>::iterator tupleIter = tupleSpace.find(*reqTup);
@@ -67,10 +77,11 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
 	return reply;
 }
 
-void* service(void* oReq) {
-	Request* req = (Request*)oReq;
-	cout<<"request from: " << req->procId <<endl;
-	cout<<"request type: ";
+void* service(void) {
+	Request* req = readReqQueue.consumerEnter();
+	cout<<"New Request found in server readReqQueue: "<<endl;
+	cout<<"Request from: " << req->procId <<endl;
+	cout<<"Request type: ";
 	switch(req->reqType) {
 		case Request::Input:
 			cout<<"input";break;
@@ -79,12 +90,13 @@ void* service(void* oReq) {
 		case Request::Read:
 			cout<<"read";break;
 	}
-	cout<<endl<<"request tuple: ";
-	for (unsigned i = 0; i < req->tuple->elems.size(); ++i) {
-		cout<< req->tuple->elems[i].pattern << " ";
-	}
-	cout << endl;
-	Reply* reply = search(req->tuple, req->reqType);
+	cout<<endl<<"Requested tuple: "<<endl;
+	cout<<*(req->tuple)<<endl;
+	//Reply* reply = search(req->tuple, req->reqType);
+	Reply * reply = new Reply();
+	Tuple * tuple = new Tuple(*(req->tuple));
+	reply->setTuple(tuple);
+	reply->isFound = true;
 
 	string clientFIFO = "/tmp/fifo.";
 	clientFIFO.append(to_string(req->procId));
@@ -93,6 +105,24 @@ void* service(void* oReq) {
 	outFIFO << *reply;
 	cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
 	delete reply;
+	delete req;
+	return 0;
+}
+
+void * receptionistThread(void * iStream)
+{
+	ifstream * inFifo = static_cast<ifstream *>(iStream);
+
+	while(1)
+	{
+		Request *req = new Request();
+		*inFifo >> *req;
+		if(req->reqType == Request::Output)
+			writeReqQueue.producerEnter(req);
+		else
+			readReqQueue.producerEnter(req);
+		cout<<"New request received in server receptionist thread..."<<endl;
+	}
 	return 0;
 }
 
@@ -108,16 +138,13 @@ int main() {
 
 	ifstream inFIFO(serverPath, ifstream::binary);
 
-	Request *req = new Request();
+	pthread_t recThread;
+	pthread_create(&recThread, NULL, &receptionistThread, static_cast<void *>(&inFIFO));
 
-	inFIFO >> *req;
-	cout<<"Request sent: "<<endl;
-	//pthread_t thr;
-	//pthread_create(&thr, NULL, &service, (void*)req);
-	service((void*)req);
+	service();
+	pthread_kill(recThread, SIGUSR1);
 	unlink(serverPath);
 	cout<<"Server's pipe's been unlinked"<<endl;
 
-	delete req;
 	return 0;
 }

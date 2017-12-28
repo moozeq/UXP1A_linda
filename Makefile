@@ -11,7 +11,7 @@ INC = -I./include
 SRC_DIR = src
 
 # Compiler flags
-CFLAGS = -Wall $(INC) -std=c++11
+CFLAGS = -Wall $(INC) -std=c++11 -pthread
 
 #
 # Project files
