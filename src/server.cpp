@@ -13,12 +13,14 @@
 #include <unordered_set>
 #include "Request.h"
 #include "Reply.h"
-
+#include "GuardedQueue.h"
 
 #define BUFFSIZE 256
 
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
+GuardedQueue writeReqQueue;
+GuardedQueue readReqQueue;
 
 std::unordered_set<Tuple> tupleSpace;	// Global tuple space
 
