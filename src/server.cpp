@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <wait.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -14,14 +15,17 @@
 #include "Request.h"
 #include "Reply.h"
 #include "GuardedQueue.h"
+#include <semaphore.h>
 
 #define BUFFSIZE 256
 
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
+const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
 Request * receptThreadReqPtr;
+sem_t * inputFifoSemaphore;
 
 std::unordered_set<Tuple> tupleSpace;	// Global tuple space
 
@@ -54,6 +58,16 @@ int init() {
 		cout<<"Server's already existed, exiting...";
 		return 1;
 	}
+
+	// Initialize input fifo semaphore
+	inputFifoSemaphore = sem_open(
+			inFifoSemaphoreName, O_CREAT, (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP), 1);
+	if (inputFifoSemaphore == SEM_FAILED)
+	{
+	        perror("sem_open(3) error");
+	        exit(EXIT_FAILURE);
+	}
+
 	signal(SIGINT, sig_handler);
 	signal(SIGUSR1, sigHandlerExit);
 	createServerPipe(serverPath);
@@ -145,12 +159,20 @@ int main() {
 	pthread_create(&readerThread, NULL, &service, NULL);
 
 	sleep(5);
-	cout<<"Sleep(20) ended"<<endl;
+	cout<<"Sleep(5) ended"<<endl;
 	pthread_kill(recThread, SIGUSR1);
 	pthread_kill(readerThread, SIGUSR1);
 	cout<<"Pthread kill sent"<<endl;
 	unlink(serverPath);
 	cout<<"Server's pipe's been unlinked (main)"<<endl;
 
+	// Close and unlink semaphore
+	if (sem_close(inputFifoSemaphore) < 0) {
+		perror("sem_close(3) failed");
+		sem_unlink(inFifoSemaphoreName);
+		exit(EXIT_FAILURE);
+	}
+	if (sem_unlink(inFifoSemaphoreName) < 0)
+	        perror("sem_unlink(3) failed");
 	return 0;
 }

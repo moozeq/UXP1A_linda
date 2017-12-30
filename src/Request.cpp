@@ -1,5 +1,5 @@
 #include "Request.h"
-
+#include <iostream>
 /**
  * 	@brief 	Gets data from the request and pushes it into ostream.
  *
@@ -29,6 +29,7 @@ std::istream& operator>>(std::istream &is, Request& req) {
 	is >> req.reqType;
 	is >> req.timeout;
 
+	std::cout<<"Operator >> (getting from ifstream)..."<<std::endl;
 	Tuple *tuple = new Tuple();
 	unsigned elemsCount;
 	is >> elemsCount;
@@ -39,6 +40,7 @@ std::istream& operator>>(std::istream &is, Request& req) {
 		is >> tmp;
 		Elem el = Elem(isString, tmp);
 		tuple->elems.push_back(el);
+		std::cout<<"tuple->elems pushed back..., isString: "<<isString << ", tmp: "<< tmp <<std::endl;
 	}
 	if(req.tuple != nullptr)
 		delete req.tuple;
