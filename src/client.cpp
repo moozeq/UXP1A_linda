@@ -12,6 +12,8 @@
 #include "Request.h"
 #include "Reply.h"
 
+#include <ctime>
+
 #define BUFFSIZE 256
 
 using namespace std;
@@ -50,9 +52,17 @@ int main() {
 
 	ofstream outFIFO(serverPath, ofstream::binary);
 
+	// Get time and convert to string
+	std::time_t t = std::time(nullptr);
+	std::string tmpString;
+	char mbstr[100];
+	std::strftime(mbstr, sizeof(mbstr), "%A %c", std::localtime(&t));
+	tmpString = mbstr;
+	tmpString = tmpString.substr(tmpString.find(":")-2, 8);
+
+	// Set up new Request and send to server
 	Request *req = new Request();
-	Tuple * tup = new Tuple({{true, std::string("krotka")},
-		{true, std::string("testowa")},{false, std::string("3")}});
+	Tuple * tup = new Tuple({{true, tmpString}, {false, std::to_string(getpid())}});
 	req->procId = getpid();
 	req->reqType = Request::Read;
 	req->timeout = 1;
@@ -60,9 +70,13 @@ int main() {
 
 	outFIFO << *req;
 	cout<<"Request for tuple has been sent"<<endl;
+	cout<<*req;
+	delete req;
 
+	// Get reply from server
 	Reply* rep = new Reply();
 	ifstream inFIFO(pipePath.c_str(), ifstream::binary);
+	ofstream outClientTmpFifo(pipePath, ofstream::binary);
 	cout<<"Waiting for reply"<<endl;
 	inFIFO >> *rep;
 
@@ -71,6 +85,5 @@ int main() {
 	unlink(pipePath.c_str());
 
 	delete rep;
-	delete req;
 	return 0;
 }

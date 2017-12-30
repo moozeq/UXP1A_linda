@@ -21,7 +21,7 @@ using namespace std;
 const char* serverPath = "/tmp/fifo.server";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
-bool childrenActiveFlag;
+Request * receptThreadReqPtr;
 
 std::unordered_set<Tuple> tupleSpace;	// Global tuple space
 
@@ -34,6 +34,8 @@ void sig_handler(int signo) {
 
 void sigHandlerExit(int signo)
 {
+	if(receptThreadReqPtr != nullptr)
+		delete receptThreadReqPtr;
 	pthread_exit(NULL);
 }
 
@@ -77,35 +79,39 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
 	return reply;
 }
 
-void* service(void) {
-	Request* req = readReqQueue.consumerEnter();
-	cout<<"New Request found in server readReqQueue: "<<endl;
-	cout<<"Request from: " << req->procId <<endl;
-	cout<<"Request type: ";
-	switch(req->reqType) {
-		case Request::Input:
-			cout<<"input";break;
-		case Request::Output:
-			cout<<"output";break;
-		case Request::Read:
-			cout<<"read";break;
+void* service(void *) {
+	while(1)
+	{
+		cout<<"service __ Request* req = readReqQueue.consumerEnter();"<<endl;
+		Request* req = readReqQueue.consumerEnter();
+		cout<<"New Request found in server readReqQueue - popped from queue: "<<endl;
+		cout<<"Request from: " << req->procId <<endl;
+		cout<<"Request type: ";
+		switch(req->reqType) {
+			case Request::Input:
+				cout<<"input";break;
+			case Request::Output:
+				cout<<"output";break;
+			case Request::Read:
+				cout<<"read";break;
+		}
+		cout<<endl<<"Requested tuple: "<<endl;
+		cout<<*(req->tuple)<<endl;
+		//Reply* reply = search(req->tuple, req->reqType);
+		Reply * reply = new Reply();
+		Tuple * tuple = new Tuple(*(req->tuple));
+		reply->setTuple(tuple);
+		reply->isFound = true;
+
+		string clientFIFO = "/tmp/fifo.";
+		clientFIFO.append(to_string(req->procId));
+		ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
+
+		outFIFO << *reply;
+		cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
+		delete reply;
+		delete req;
 	}
-	cout<<endl<<"Requested tuple: "<<endl;
-	cout<<*(req->tuple)<<endl;
-	//Reply* reply = search(req->tuple, req->reqType);
-	Reply * reply = new Reply();
-	Tuple * tuple = new Tuple(*(req->tuple));
-	reply->setTuple(tuple);
-	reply->isFound = true;
-
-	string clientFIFO = "/tmp/fifo.";
-	clientFIFO.append(to_string(req->procId));
-	ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
-
-	outFIFO << *reply;
-	cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
-	delete reply;
-	delete req;
 	return 0;
 }
 
@@ -115,13 +121,14 @@ void * receptionistThread(void * iStream)
 
 	while(1)
 	{
-		Request *req = new Request();
-		*inFifo >> *req;
-		if(req->reqType == Request::Output)
-			writeReqQueue.producerEnter(req);
+		receptThreadReqPtr = new Request();
+		*inFifo >> *receptThreadReqPtr;
+		if(receptThreadReqPtr->reqType == Request::Output)
+			writeReqQueue.producerEnter(receptThreadReqPtr);
 		else
-			readReqQueue.producerEnter(req);
+			readReqQueue.producerEnter(receptThreadReqPtr);
 		cout<<"New request received in server receptionist thread..."<<endl;
+		cout<<*(receptThreadReqPtr->tuple)<<endl;
 	}
 	return 0;
 }
@@ -130,21 +137,20 @@ int main() {
 	if (init() != 0)
 		return 0;
 
-	// Tuple Space test data
-	Tuple tup{{true, std::string("tekst")}, {false, std::string("23")}};
-	tupleSpace.insert(tup);
-	tupleSpace.insert({{true, std::string("krotka")},
-		{true, std::string("testowa")},{false, std::string("3")}});
-
 	ifstream inFIFO(serverPath, ifstream::binary);
+	ofstream outServerTmpFifo(serverPath, ofstream::binary);
 
-	pthread_t recThread;
+	pthread_t recThread, readerThread;
 	pthread_create(&recThread, NULL, &receptionistThread, static_cast<void *>(&inFIFO));
+	pthread_create(&readerThread, NULL, &service, NULL);
 
-	service();
+	sleep(5);
+	cout<<"Sleep(20) ended"<<endl;
 	pthread_kill(recThread, SIGUSR1);
+	pthread_kill(readerThread, SIGUSR1);
+	cout<<"Pthread kill sent"<<endl;
 	unlink(serverPath);
-	cout<<"Server's pipe's been unlinked"<<endl;
+	cout<<"Server's pipe's been unlinked (main)"<<endl;
 
 	return 0;
 }
