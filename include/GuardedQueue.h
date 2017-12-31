@@ -12,11 +12,12 @@ public:
 	void producerEnter(Request * request);
 	Request * consumerEnter();
 	size_t size(void);
+	~GuardedQueue();
 
 private:
-	std::mutex mtx;
-	std::condition_variable emptyCond;
 	std::deque<Request *> queue;
+ 	std::condition_variable emptyCond;
+	std::mutex mtx;
 };
 
 #endif /* INCLUDE_GUARDEDQUEUE_H_ */

@@ -13,16 +13,12 @@
 #include "Request.h"
 #include "Reply.h"
 #include <semaphore.h>
-
 #include <ctime>
-
-#define BUFFSIZE 256
 
 using namespace std;
 string pipePath = "/tmp/fifo.";
 const char* serverPath = "/tmp/fifo.server";
 const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
-sem_t * serverFifoSemaphore;
 
 void sig_handler(int signo) {
 	if(signo == SIGINT){
@@ -38,16 +34,16 @@ void createInPipe(pid_t clientPid) {
 	cout<<"FIFO's been created at "<<pipePath<<endl;
 }
 
-void sendRequest(ofstream * outStream, const Request * req)
+void sendRequest(ofstream * outStream, sem_t * semaphore, const Request * req)
 {
-	if (sem_wait(serverFifoSemaphore) < 0)
+	if (sem_wait(semaphore) < 0)
 		perror("sem_wait(3) failed on child");
 	(*outStream)<<(*req);
-	if (sem_post(serverFifoSemaphore) < 0)
+	if (sem_post(semaphore) < 0)
 		perror("sem_post(3) error on child");
 }
 
-int init() {
+int init(sem_t ** serverFifoSem) {
 	pid_t clientPid = getpid();
 	cout<<"Client's starting..."<<endl<<"Client's PID: "<<clientPid<<endl;
 	if(access(serverPath, F_OK) == -1) {
@@ -56,8 +52,8 @@ int init() {
 	}
 
 	// Open server fifo semaphore
-	serverFifoSemaphore = sem_open(inFifoSemaphoreName, O_RDWR);
-	if (serverFifoSemaphore == SEM_FAILED)
+	(*serverFifoSem) = sem_open(inFifoSemaphoreName, O_RDWR);
+	if (*serverFifoSem == SEM_FAILED)
 	{
 		perror("sem_open(3) failed");
 		exit(EXIT_FAILURE);
@@ -68,7 +64,8 @@ int init() {
 }
 
 int main() {
-	if (init() != 0)
+	sem_t * serverFifoSemaphore;
+	if (init(&serverFifoSemaphore) != 0)
 		return 0;
 
 	ofstream outFIFO(serverPath, ofstream::binary);
@@ -90,7 +87,7 @@ int main() {
 	req->setTuple(tup);
 
 //	outFIFO << *req;
-	sendRequest(&outFIFO, req);
+	sendRequest(&outFIFO, serverFifoSemaphore,req);
 	cout<<"Request for tuple has been sent"<<endl;
 	cout<<*req;
 	delete req;

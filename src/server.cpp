@@ -17,17 +17,14 @@
 #include "GuardedQueue.h"
 #include <semaphore.h>
 
-#define BUFFSIZE 256
-
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
 const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
-Request * receptThreadReqPtr;
 sem_t * inputFifoSemaphore;
-
 std::unordered_set<Tuple> tupleSpace;	// Global tuple space
+bool stopThreadsFlag;
 
 void sig_handler(int signo) {
 	if(signo == SIGINT) {
@@ -36,18 +33,20 @@ void sig_handler(int signo) {
 	}
 }
 
-void sigHandlerExit(int signo)
-{
-	if(receptThreadReqPtr != nullptr)
-		delete receptThreadReqPtr;
-	pthread_exit(NULL);
-}
-
 void createServerPipe(const char* serverPath) {
 	umask(0);
 	mkfifo(serverPath, 0666);
 	cout<<"Server's FIFO's been created at ";
 	cout<<serverPath<<endl;
+}
+
+void sendRequest(ofstream * outStream, sem_t * semaphore, const Request * req)
+{
+	if (sem_wait(semaphore) < 0)
+		perror("sem_wait(3) failed on child");
+	(*outStream)<<(*req);
+	if (sem_post(semaphore) < 0)
+		perror("sem_post(3) error on child");
 }
 
 int init() {
@@ -61,15 +60,15 @@ int init() {
 
 	// Initialize input fifo semaphore
 	inputFifoSemaphore = sem_open(
-			inFifoSemaphoreName, O_CREAT, (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP), 1);
+			inFifoSemaphoreName, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP), 1);
 	if (inputFifoSemaphore == SEM_FAILED)
 	{
 	        perror("sem_open(3) error");
 	        exit(EXIT_FAILURE);
 	}
 
+	stopThreadsFlag = false;
 	signal(SIGINT, sig_handler);
-	signal(SIGUSR1, sigHandlerExit);
 	createServerPipe(serverPath);
 	return 0;
 }
@@ -94,7 +93,7 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
 }
 
 void* service(void *) {
-	while(1)
+	while(!stopThreadsFlag)
 	{
 		cout<<"service __ Request* req = readReqQueue.consumerEnter();"<<endl;
 		Request* req = readReqQueue.consumerEnter();
@@ -108,6 +107,12 @@ void* service(void *) {
 				cout<<"output";break;
 			case Request::Read:
 				cout<<"read";break;
+			case Request::Stop:
+			{
+				cout<<"Request::Stop received in service() thread"<<endl;
+				delete req;
+				return 0;
+			}
 		}
 		cout<<endl<<"Requested tuple: "<<endl;
 		cout<<*(req->tuple)<<endl;
@@ -133,16 +138,23 @@ void * receptionistThread(void * iStream)
 {
 	ifstream * inFifo = static_cast<ifstream *>(iStream);
 
-	while(1)
+	while(!stopThreadsFlag)
 	{
-		receptThreadReqPtr = new Request();
-		*inFifo >> *receptThreadReqPtr;
-		if(receptThreadReqPtr->reqType == Request::Output)
-			writeReqQueue.producerEnter(receptThreadReqPtr);
+		Request * incomingReq = new Request();
+		*inFifo >> *incomingReq;
+		if(incomingReq->reqType == Request::Output)
+			writeReqQueue.producerEnter(incomingReq);
+		else if(incomingReq->reqType == Request::Stop)
+		{
+			Request * doubledReq = new Request(*incomingReq);
+			readReqQueue.producerEnter(doubledReq);
+			writeReqQueue.producerEnter(incomingReq);
+			return 0;
+		}
 		else
-			readReqQueue.producerEnter(receptThreadReqPtr);
+			readReqQueue.producerEnter(incomingReq);
 		cout<<"New request received in server receptionist thread..."<<endl;
-		cout<<*(receptThreadReqPtr->tuple)<<endl;
+		cout<<*(incomingReq->tuple)<<endl;
 	}
 	return 0;
 }
@@ -159,10 +171,19 @@ int main() {
 	pthread_create(&readerThread, NULL, &service, NULL);
 
 	sleep(5);
-	cout<<"Sleep(5) ended"<<endl;
-	pthread_kill(recThread, SIGUSR1);
-	pthread_kill(readerThread, SIGUSR1);
-	cout<<"Pthread kill sent"<<endl;
+
+	// Stop children threads - send Stop request
+	stopThreadsFlag = true;
+	Request * r = new Request();
+	r->procId = getpid();
+	r->reqType = Request::Stop;
+	r->timeout = 713;
+	sendRequest(&outServerTmpFifo, inputFifoSemaphore, r);
+	delete r;
+
+	// Join children threads
+	pthread_join(recThread, NULL);
+	pthread_join(readerThread, NULL);
 	unlink(serverPath);
 	cout<<"Server's pipe's been unlinked (main)"<<endl;
 

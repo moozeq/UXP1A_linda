@@ -25,6 +25,7 @@ class Request
 {
 public:
 	enum ReqType{
+		Stop = -1,
 		Input,
 		Output,
 		Read
@@ -42,14 +43,13 @@ public:
 		timeout = 0;
 		tuple = new Tuple();
 	}
+	Request(const Request & r);
 	~Request(){
 		if(tuple != nullptr)
 			delete tuple;
 	}
-
 	void setTuple(Tuple * _tuple);
 };
-
 
 std::ostream& operator<<(std::ostream &os, const Request& req);
 std::istream& operator>>(std::istream &is, Request& req);

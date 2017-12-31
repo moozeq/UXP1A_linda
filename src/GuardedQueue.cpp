@@ -1,4 +1,12 @@
 #include "GuardedQueue.h"
+#include <iostream>
+
+GuardedQueue::~GuardedQueue()
+{
+	std::unique_lock<std::mutex> uLock(mtx);
+	for(unsigned i = 0; i < queue.size(); ++i)
+		delete queue[i];
+}
 
 void GuardedQueue::producerEnter(Request * request)
 {

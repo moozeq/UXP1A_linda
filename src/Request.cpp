@@ -1,6 +1,17 @@
 #include "Request.h"
 #include <iostream>
 /**
+ * 	@brief	Copy constructor
+ */
+Request::Request(const Request & r)
+{
+	this->procId = r.procId;
+	this->reqType = r.reqType;
+	this->timeout = r.timeout;
+	this->tuple = new Tuple(*(r.tuple));
+}
+
+/**
  * 	@brief 	Gets data from the request and pushes it into ostream.
  *
  * 	@param	os is ostream object which data is pushed to
