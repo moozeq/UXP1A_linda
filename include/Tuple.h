@@ -23,14 +23,17 @@ public:
 	friend std::ostream & operator<<(std::ostream & os, const Tuple & tuple);
 
 	Tuple(){}
+	Tuple(const Tuple & t);
 	Tuple(std::initializer_list<Elem> init) : elems(init)	{}
-	~Tuple(){}
+	Tuple & operator=(const Tuple & t);
 };
 
 /**
  * 	@brief	Function which provides operator== for Tuple objects comparison.
  */
 bool operator ==(const Tuple & first, const Tuple & second);
+
+bool operator!=(const Tuple & first, const Tuple & second);
 
 /**
  * 	@brief	operator<< for Tuple class.

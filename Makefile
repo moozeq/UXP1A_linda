@@ -11,14 +11,14 @@ INC = -I./include
 SRC_DIR = src
 
 # Compiler flags
-CFLAGS = -Wall $(INC) -std=c++11
+CFLAGS = -Wall $(INC) -std=c++11 -pthread
 
 #
 # Project files
 #
 COMMONSRCS = $(SRC_DIR)/Tuple.cpp $(SRC_DIR)/Request.cpp $(SRC_DIR)/Reply.cpp
 CLIENTSRCS = $(COMMONSRCS) $(SRC_DIR)/client.cpp
-SERVERSRCS = $(COMMONSRCS) $(SRC_DIR)/server.cpp
+SERVERSRCS = $(COMMONSRCS) $(SRC_DIR)/server.cpp $(SRC_DIR)/GuardedQueue.cpp
 
 #
 # Object files

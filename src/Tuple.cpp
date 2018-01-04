@@ -1,5 +1,17 @@
 #include "Tuple.h"
 
+Tuple & Tuple::operator=(const Tuple & t)
+{
+	if(*this != t)
+		this->elems = t.elems;
+	return *this;
+}
+
+Tuple::Tuple(const Tuple & t)
+{
+	this->elems = t.elems;
+}
+
 bool operator ==(const Tuple & first, const Tuple & second){
 	if(first.elems.size() != second.elems.size())
 		return false;
@@ -11,6 +23,10 @@ bool operator ==(const Tuple & first, const Tuple & second){
 			return false;
 	}
 	return true;
+}
+
+bool operator!=(const Tuple & first, const Tuple & second){
+	return !(first==second);
 }
 
 std::ostream & operator<<(std::ostream & os, const Tuple & tuple)

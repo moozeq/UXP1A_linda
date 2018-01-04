@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <wait.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -11,12 +12,13 @@
 #include <signal.h>
 #include "Request.h"
 #include "Reply.h"
-
-#define BUFFSIZE 256
+#include <semaphore.h>
+#include <ctime>
 
 using namespace std;
 string pipePath = "/tmp/fifo.";
 const char* serverPath = "/tmp/fifo.server";
+const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 
 void sig_handler(int signo) {
 	if(signo == SIGINT){
@@ -32,45 +34,76 @@ void createInPipe(pid_t clientPid) {
 	cout<<"FIFO's been created at "<<pipePath<<endl;
 }
 
-int init() {
+void sendRequest(ofstream * outStream, sem_t * semaphore, const Request * req)
+{
+	if (sem_wait(semaphore) < 0)
+		perror("sem_wait(3) failed on child");
+	(*outStream)<<(*req);
+	if (sem_post(semaphore) < 0)
+		perror("sem_post(3) error on child");
+}
+
+int init(sem_t ** serverFifoSem) {
 	pid_t clientPid = getpid();
 	cout<<"Client's starting..."<<endl<<"Client's PID: "<<clientPid<<endl;
-		if(access(serverPath, F_OK) == -1) {
-			cout<<"Server doesn't exist"<<endl;
-			return 1;
-		}
+	if(access(serverPath, F_OK) == -1) {
+		cout<<"Server doesn't exist"<<endl;
+		return 1;
+	}
+
+	// Open server fifo semaphore
+	(*serverFifoSem) = sem_open(inFifoSemaphoreName, O_RDWR);
+	if (*serverFifoSem == SEM_FAILED)
+	{
+		perror("sem_open(3) failed");
+		exit(EXIT_FAILURE);
+	}
 	createInPipe(clientPid);
 	signal(SIGINT, sig_handler);
 	return 0;
 }
 
 int main() {
-	if (init() != 0)
+	sem_t * serverFifoSemaphore;
+	if (init(&serverFifoSemaphore) != 0)
 		return 0;
 
 	ofstream outFIFO(serverPath, ofstream::binary);
 
+	// Get time and convert to string
+	std::time_t t = std::time(nullptr);
+	std::string tmpString;
+	char mbstr[100];
+	std::strftime(mbstr, sizeof(mbstr), "%A %c", std::localtime(&t));
+	tmpString = mbstr;
+	tmpString = tmpString.substr(tmpString.find(":")-2, 8);
+
+	// Set up new Request and send to server
 	Request *req = new Request();
-	Tuple * tup = new Tuple({{true, std::string("krotka")},
-		{true, std::string("testowa")},{false, std::string("3")}});
+	Tuple * tup = new Tuple({{true, tmpString}, {false, std::to_string(getpid())}});
 	req->procId = getpid();
 	req->reqType = Request::Read;
 	req->timeout = 1;
 	req->setTuple(tup);
 
-	outFIFO << *req;
+//	outFIFO << *req;
+	sendRequest(&outFIFO, serverFifoSemaphore,req);
 	cout<<"Request for tuple has been sent"<<endl;
+	cout<<*req;
+	delete req;
 
+	// Get reply from server
 	Reply* rep = new Reply();
 	ifstream inFIFO(pipePath.c_str(), ifstream::binary);
+	ofstream outClientTmpFifo(pipePath, ofstream::binary);
 	cout<<"Waiting for reply"<<endl;
 	inFIFO >> *rep;
 
 	cout<<"Reply: "<<std::endl;
 	cout<<*(rep->tuple);
 	unlink(pipePath.c_str());
-
+	if (sem_close(serverFifoSemaphore) < 0)
+	        perror("sem_close(3) failed");
 	delete rep;
-	delete req;
 	return 0;
 }
