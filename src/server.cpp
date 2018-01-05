@@ -170,8 +170,8 @@ bool checkPattern(Elem el1, Elem el2) {
 		switch (sign) {
 			case 0: return first == second;
 			case 1: return first > second;
-			case 3: return first >= second;
-			case 2: return first < second;
+			case 2: return first >= second;
+			case 3: return first < second;
 			case 4: return first <= second;
 		}
 	}
