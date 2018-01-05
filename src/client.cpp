@@ -70,23 +70,16 @@ int main() {
 
 	ofstream outFIFO(serverPath, ofstream::binary);
 
-	// Get time and convert to string
-	std::time_t t = std::time(nullptr);
-	std::string tmpString;
-	char mbstr[100];
-	std::strftime(mbstr, sizeof(mbstr), "%A %c", std::localtime(&t));
-	tmpString = mbstr;
-	tmpString = tmpString.substr(tmpString.find(":")-2, 8);
-
-	// Set up new Request and send to server
+	// Get new Request from user
 	Request *req = new Request();
-	Tuple * tup = new Tuple({{true, tmpString}, {false, std::to_string(getpid())}});
-	req->procId = getpid();
-	req->reqType = Request::Read;
-	req->timeout = 1;
-	req->setTuple(tup);
+	bool correct = false;
+	do {
+		CommandParser::showOptions();
+		string line;
+		getline(cin, line);
+		correct = CommandParser::parseCommand(line, req);
+	} while (!correct);
 
-//	outFIFO << *req;
 	sendRequest(&outFIFO, serverFifoSemaphore,req);
 	cout<<"Request for tuple has been sent"<<endl;
 	cout<<*req;
