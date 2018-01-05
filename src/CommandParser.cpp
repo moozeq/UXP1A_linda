@@ -1,10 +1,3 @@
-/*
- * CommandParser.cpp
- *
- *  Created on: Jan 4, 2018
- *      Author: ted
- */
-
 #include "CommandParser.h"
 #include <iostream>
 #include <string>
@@ -25,17 +18,24 @@ void CommandParser::showOptions() {
 		 << "> ";
 }
 
+bool CommandParser::checkIfExit(string line) {
+	string ex = "exit";
+	return line == ex;
+}
+
 bool CommandParser::parseCommand(string line, Request* req) {
-	stringstream ss(line);
 	req->procId = getpid();
 	req->timeout = 0;
 
-	string command, type, pattern, tupleStr;
-	while (ss.peek() == ' ')
+	stringstream ss(line);
+	string command, type, pattern, tupleStr; //command(tupleStr) | tupleStr = type:pattern...
+
+	while (ss.peek() == ' ') //ignore whitespace before command
 		ss.ignore();
 	getline(ss, command, '(');
-	while (command.back() == ' ')
+	while (command.back() == ' ') //ignore whitespace after command
 		command.pop_back();
+
 	if (command == "input")
 		req->reqType = Request::Input;
 	else if (command == "output")
@@ -46,43 +46,35 @@ bool CommandParser::parseCommand(string line, Request* req) {
 		return false;
 
 	Tuple* tup = new Tuple();
-	while (ss.peek() == ' ')
+	while (ss.peek() == ' ') //ignore whitespace before tupleStr
 		ss.ignore();
-	getline(ss, tupleStr);
+	getline(ss, tupleStr); //get whole line after command as tupleStr
 	stringstream st(tupleStr);
-	while (getline(st, type, ':')) {
+	while (getline(st, type, ':')) { //get type (str/int) and remove whitespace
 		while (type.back() == ' ')
 			type.pop_back();
-		if (type != "string" && type != "integer") {
-			if (req->reqType == Request::Input || req->reqType == Request::Read) { //timeout
-				getline(st, type, ')');
-				while (type.back() == ' ' || type.back() == ')')
-					type.pop_back();
-				req->timeout = stoul(pattern);
-				req->setTuple(tup);
-				return true;
-			}
-			cout << "Wrong input" << endl;
-			delete tup;
-			return false;
-		}
 		if (type == "string") {
-			int quotMarks = 0;
+			int quotMarks = 0; //check if right syntax -> (string:"...")
 			while (st.peek() == ' ')
 				st.ignore();
 			if(st.peek() == '"') {
 				st.ignore();
 				++quotMarks;
 			}
-			getline(st, pattern, ',');
+			getline(st, pattern, ','); //get pattern with 2nd quot mark
 			while (pattern.back() == ' ')
 				pattern.pop_back();
-			if (pattern.back() == ')') {
-				cout << "Wrong input, check out brackets (<tuple pattern>)" << endl;
-				delete tup;
-				return false;
+			if (pattern.back() == ')') { //end of tupleStr where should be timeout or end of output
+				if (req->reqType != Request::Output) { //not output, wrong input
+					cout << "Wrong input, in the end should be timeout" << endl;
+					delete tup;
+					return false;
+				}
+				else
+					pattern.pop_back(); //pop ')' from output
 			}
-			if(pattern.back() == '"') {
+
+			if(pattern.back() == '"') { //remove quot mark
 				pattern.pop_back();
 				++quotMarks;
 			}
@@ -95,20 +87,39 @@ bool CommandParser::parseCommand(string line, Request* req) {
 			tup->elems.push_back(*el);
 		}
 		else if (type == "integer") {
-			while (st.peek() == ' ')
+			while (st.peek() == ' ') //remove whitespace
 				st.ignore();
 			getline(st, pattern, ',');
 			while (pattern.back() == ' ')
 				pattern.pop_back();
-			if (pattern.back() == ')') {
-				cout << "Wrong input" << endl;
-				delete tup;
-				return false;
+			if (pattern.back() == ')') { //end of tupleStr where should be timeout or end of output
+				if (req->reqType != Request::Output) { //not output, wrong input
+					cout << "Wrong input, in the end should be timeout" << endl;
+					delete tup;
+					return false;
+				}
+				else
+					pattern.pop_back(); //pop ')' from output
 			}
 			Elem* el = new Elem(false, pattern);
 			tup->elems.push_back(*el);
 		}
-		else {
+		else { //didn't recognize type, not string nor integer, may be timeout
+			if ((req->reqType == Request::Input || req->reqType == Request::Read) && tup->elems.size() > 0) { //timeout in read & input
+				getline(st, type, ')');
+				while (type.back() == ' ' || type.back() == ')') //remove bracket and whitespace from timeout var
+					type.pop_back();
+				try {
+				req->timeout = stoul(pattern); //convert string to unsigned
+				}
+				catch (invalid_argument& e) {
+					cout << "Wrong input" << endl;
+					delete tup;
+					return false;
+				}
+				req->setTuple(tup);
+				return true; //timeout it's last value in tupleStr
+			}
 			cout << "Wrong input" << endl;
 			delete tup;
 			return false;

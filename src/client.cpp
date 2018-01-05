@@ -12,6 +12,7 @@
 #include <signal.h>
 #include "Request.h"
 #include "Reply.h"
+#include "CommandParser.h"
 #include <semaphore.h>
 #include <ctime>
 
@@ -70,33 +71,45 @@ int main() {
 
 	ofstream outFIFO(serverPath, ofstream::binary);
 
+
 	// Get new Request from user
-	Request *req = new Request();
-	bool correct = false;
-	do {
-		CommandParser::showOptions();
-		string line;
-		getline(cin, line);
-		correct = CommandParser::parseCommand(line, req);
-	} while (!correct);
+	bool exit = false;
+	while(!exit) {
+		Request *req = new Request();
+		bool correct = false;
+		do {
+			CommandParser::showOptions();
+			string line;
+			getline(cin, line);
+			exit = CommandParser::checkIfExit(line);
+			if (exit)
+				break;
+			correct = CommandParser::parseCommand(line, req);
+		} while (!correct);
 
-	sendRequest(&outFIFO, serverFifoSemaphore,req);
-	cout<<"Request for tuple has been sent"<<endl;
-	cout<<*req;
-	delete req;
+		if (exit) {
+			delete req;
+			break;
+		}
+		sendRequest(&outFIFO, serverFifoSemaphore,req);
+		cout<<"Request for tuple has been sent"<<endl;
+		cout<<*req;
+		delete req;
 
-	// Get reply from server
-	Reply* rep = new Reply();
-	ifstream inFIFO(pipePath.c_str(), ifstream::binary);
-	ofstream outClientTmpFifo(pipePath, ofstream::binary);
-	cout<<"Waiting for reply"<<endl;
-	inFIFO >> *rep;
+		// Get reply from server
+		Reply* rep = new Reply();
+		ifstream inFIFO(pipePath.c_str(), ifstream::binary);
+		ofstream outClientTmpFifo(pipePath, ofstream::binary);
+		cout<<"Waiting for reply"<<endl;
+		inFIFO >> *rep;
 
-	cout<<"Reply: "<<std::endl;
-	cout<<*(rep->tuple);
+		cout<<"Reply: "<<std::endl;
+		cout<<*(rep->tuple);
+		delete rep;
+	}
 	unlink(pipePath.c_str());
 	if (sem_close(serverFifoSemaphore) < 0)
 	        perror("sem_close(3) failed");
-	delete rep;
+	cout<<"Client" << getpid() << " exited" << endl;
 	return 0;
 }
