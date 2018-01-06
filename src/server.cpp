@@ -11,7 +11,8 @@
 #include <signal.h>
 #include <pthread.h>
 #include <fstream>
-#include <unordered_set>
+//#include <unordered_set>
+#include <map>
 #include "Request.h"
 #include "Reply.h"
 #include "GuardedQueue.h"
@@ -23,7 +24,7 @@ const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
 sem_t * inputFifoSemaphore;
-std::unordered_set<Tuple> tupleSpace;	// Global tuple space
+multimap<size_t, Tuple> tupleSpace; //Global tuple space
 bool stopThreadsFlag;
 
 void sig_handler(int signo) {
@@ -72,23 +73,89 @@ int init() {
 	createServerPipe(serverPath);
 	return 0;
 }
+/*
+ * return:
+ * 0 - no sign (==)
+ * 1 - >
+ * 2 - >=
+ * 3 - <
+ * 4 - <=
+ * 5 - *
+ */
+int checkIfSign(string pattern) {
+	if (pattern.size() > 1) {
+		if (pattern[0] == '>' && !(pattern[1] == '='))
+			return 1;
+		else if (pattern[0] == '>' && pattern[1] == '=')
+			return 2;
+		else if (pattern[0] == '<' && !(pattern[1] == '='))
+			return 3;
+		else if (pattern[0] == '<' && pattern[1] == '=')
+			return 4;
+	}
+	if (pattern.size() == 1 && pattern[0] == '*')
+		return 5;
+	return 0; //only 1 char, cannot be sign
+}
+
+bool checkPattern(Elem el1, Elem el2) {
+	if(el1.isString != el2.isString)
+		return false;
+	if(el1.isString) {
+		return true; //to complete
+	}
+	else { //integer
+		int sign = checkIfSign(el2.pattern);
+		int i; //offset in string
+		switch (sign) {
+			case 0: i = 0; break;
+			case 1:
+			case 3: i = 1; break;
+			case 2:
+			case 4: i = 2; break;
+			case 5: return true; //* - can be anything
+		}
+		int first, second;
+		try {
+			first = stoi(el1.pattern);
+			second = stoi(el2.pattern.substr(i));
+		}
+		catch (invalid_argument& e) {
+			return false;
+		}
+		switch (sign) {
+			case 0: return first == second;
+			case 1: return first > second;
+			case 3: return first >= second;
+			case 2: return first < second;
+			case 4: return first <= second;
+		}
+	}
+	return false;
+}
 
 /**
  * 	@brief	Finds tuple in tuple space and returns reply.
  */
 Reply* search(const Tuple* reqTup, unsigned opType) {
 	Reply* reply = new Reply();
-	unordered_set<Tuple>::iterator tupleIter = tupleSpace.find(*reqTup);
-	if(tupleIter != tupleSpace.end())
+	pair <multimap<size_t, Tuple>::iterator, multimap<size_t, Tuple>::iterator> ret;
+	const size_t tupHash = reqTup->getHash();
+	ret = tupleSpace.equal_range(tupHash);
+	for (multimap<size_t, Tuple>::iterator it = ret.first; it != ret.second; ++it)
 	{
+		unsigned i;
+		for (i = 0; i < reqTup->elems.size(); ++i) {
+			if (!checkPattern(it->second.elems[i], reqTup->elems[i]))
+				break;
+		}
+		if (i != reqTup->elems.size())
+			continue;
 		reply->isFound = true;
-		Tuple * foundTupleCopy = new Tuple(*tupleIter);
-		reply->setTuple(foundTupleCopy);
+		reply->setTuple(new Tuple(it->second));
+		return reply;
 	}
-	else
-	{
-		reply->isFound = false;
-	}
+	reply->isFound = false;
 	return reply;
 }
 
@@ -116,11 +183,7 @@ void* service(void *) {
 		}
 		cout<<endl<<"Requested tuple: "<<endl;
 		cout<<*(req->tuple)<<endl;
-		//Reply* reply = search(req->tuple, req->reqType);
-		Reply * reply = new Reply();
-		Tuple * tuple = new Tuple(*(req->tuple));
-		reply->setTuple(tuple);
-		reply->isFound = true;
+		Reply * reply = search(req->tuple, req->reqType);
 
 		string clientFIFO = "/tmp/fifo.";
 		clientFIFO.append(to_string(req->procId));
@@ -159,10 +222,25 @@ void * receptionistThread(void * iStream)
 	return 0;
 }
 
+void addTestSet() {
+	Tuple* tup = new Tuple();
+	string st1 = "std";
+	string st2 = "3";
+	Elem* el1 = new Elem(true, st1);
+	Elem* el2 = new Elem(false, st2);
+	tup->elems.push_back(*el1);
+	tup->elems.push_back(*el2);
+	tupleSpace.insert(make_pair(tup->getHash(), *tup));
+	delete tup;
+	delete el1;
+	delete el2;
+}
+
 int main() {
 	if (init() != 0)
 		return 0;
 
+	addTestSet();
 	ifstream inFIFO(serverPath, ifstream::binary);
 	ofstream outServerTmpFifo(serverPath, ofstream::binary);
 
@@ -170,7 +248,7 @@ int main() {
 	pthread_create(&recThread, NULL, &receptionistThread, static_cast<void *>(&inFIFO));
 	pthread_create(&readerThread, NULL, &service, NULL);
 
-	sleep(5);
+	sleep(360);
 
 	// Stop children threads - send Stop request
 	stopThreadsFlag = true;

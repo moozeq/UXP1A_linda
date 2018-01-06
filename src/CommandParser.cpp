@@ -10,11 +10,12 @@ using namespace std;
 
 void CommandParser::showOptions() {
 	cout
+		 << "Available commands: " << endl
 		 << "\tinput(tuple pattern, timeout) to get and remove tuple from tuples space" << endl
 		 << "\toutput(tuple) to insert tuple into tuples space" << endl
 		 << "\tread(tuple pattern, timeout) to get tuple from tuples space without removing it" << endl << endl
 		 << "Where (tuple pattern) is a demanded tuple consists strings/integers patterns as follows: " << endl
-		 << "\tstring:\"<string pattern>\", integer:<integer pattern>" << endl
+		 << "\tstring:\"<string pattern>\", integer:<integer pattern>, string:*, integer:*" << endl
 		 << "> ";
 }
 
@@ -70,15 +71,17 @@ bool CommandParser::parseCommand(string line, Request* req) {
 					delete tup;
 					return false;
 				}
-				else
+				else {
 					pattern.pop_back(); //pop ')' from output
+					while (pattern.back() == ' ')
+						pattern.pop_back();
+				}
 			}
-
 			if(pattern.back() == '"') { //remove quot mark
 				pattern.pop_back();
 				++quotMarks;
 			}
-			if(quotMarks != 2) {
+			if(quotMarks != 2 && !(pattern.size() == 1 && pattern.back() == '*')) { //without "" can be *
 				cout << "Wrong input, check out quot marks (string:\"<...>\")" << endl;
 				delete tup;
 				return false;
@@ -110,10 +113,10 @@ bool CommandParser::parseCommand(string line, Request* req) {
 				while (type.back() == ' ' || type.back() == ')') //remove bracket and whitespace from timeout var
 					type.pop_back();
 				try {
-				req->timeout = stoul(pattern); //convert string to unsigned
+					req->timeout = stoul(type); //convert string to unsigned
 				}
 				catch (invalid_argument& e) {
-					cout << "Wrong input" << endl;
+					cout << "Wrong input, cannot read timeout" << endl;
 					delete tup;
 					return false;
 				}

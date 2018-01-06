@@ -70,8 +70,6 @@ int main() {
 		return 0;
 
 	ofstream outFIFO(serverPath, ofstream::binary);
-
-
 	// Get new Request from user
 	bool exit = false;
 	while(!exit) {
@@ -103,8 +101,12 @@ int main() {
 		cout<<"Waiting for reply"<<endl;
 		inFIFO >> *rep;
 
-		cout<<"Reply: "<<std::endl;
-		cout<<*(rep->tuple);
+		if (rep->isFound) {
+			cout<<"Reply: "<<endl;
+			cout<<*(rep->tuple);
+		}
+		else
+			cout<<"Didn't find demanded tuple"<<endl;
 		delete rep;
 	}
 	unlink(pipePath.c_str());
