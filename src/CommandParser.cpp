@@ -24,6 +24,16 @@ bool CommandParser::checkIfExit(string line) {
 	return line == ex;
 }
 
+void skipWhsp(string& str) {
+	while (str.back() == ' ')
+		str.pop_back();
+}
+
+void skipWhsp(stringstream& ss) {
+	while (ss.peek() == ' ')
+		ss.ignore();
+}
+
 bool CommandParser::parseCommand(string line, Request* req) {
 	req->procId = getpid();
 	req->timeout = 0;
@@ -31,11 +41,9 @@ bool CommandParser::parseCommand(string line, Request* req) {
 	stringstream ss(line);
 	string command, type, pattern, tupleStr; //command(tupleStr) | tupleStr = type:pattern...
 
-	while (ss.peek() == ' ') //ignore whitespace before command
-		ss.ignore();
+	skipWhsp(ss);
 	getline(ss, command, '(');
-	while (command.back() == ' ') //ignore whitespace after command
-		command.pop_back();
+	skipWhsp(command);
 
 	if (command == "input")
 		req->reqType = Request::Input;
@@ -47,41 +55,29 @@ bool CommandParser::parseCommand(string line, Request* req) {
 		return false;
 
 	Tuple* tup = new Tuple();
-	while (ss.peek() == ' ') //ignore whitespace before tupleStr
-		ss.ignore();
+	skipWhsp(ss);
 	getline(ss, tupleStr); //get whole line after command as tupleStr
 	stringstream st(tupleStr);
 	while (getline(st, type, ':')) { //get type (str/int) and remove whitespace
-		while (type.back() == ' ')
-			type.pop_back();
+		skipWhsp(type);
 		if (type == "string") {
 			int quotMarks = 0; //check if right syntax -> (string:"...")
-			while (st.peek() == ' ')
-				st.ignore();
+			skipWhsp(st);
 			if(st.peek() == '"') {
 				st.ignore();
 				++quotMarks;
 			}
 			getline(st, pattern, ','); //get pattern with 2nd quot mark
-			while (pattern.back() == ' ')
-				pattern.pop_back();
-			if (pattern.back() == ')') { //end of tupleStr where should be timeout or end of output
-				if (req->reqType != Request::Output) { //not output, wrong input
-					cout << "Wrong input, in the end should be timeout" << endl;
-					delete tup;
-					return false;
-				}
-				else {
-					pattern.pop_back(); //pop ')' from output
-					while (pattern.back() == ' ')
-						pattern.pop_back();
-				}
+			skipWhsp(pattern);
+			if (pattern.back() == ')') { //end of tupleStr, timeout or without
+				pattern.pop_back(); //pop ')'
+				skipWhsp(pattern);
 			}
 			if(pattern.back() == '"') { //remove quot mark
 				pattern.pop_back();
 				++quotMarks;
 			}
-			if(quotMarks != 2 && !(pattern.size() == 1 && pattern.back() == '*')) { //without "" can be *
+			if(quotMarks != 2 && !(pattern.size() == 1 && pattern.back() == '*')) { //can be only: ".." or * as pattern
 				cout << "Wrong input, check out quot marks (string:\"<...>\")" << endl;
 				delete tup;
 				return false;
@@ -90,19 +86,12 @@ bool CommandParser::parseCommand(string line, Request* req) {
 			tup->elems.push_back(*el);
 		}
 		else if (type == "integer") {
-			while (st.peek() == ' ') //remove whitespace
-				st.ignore();
+			skipWhsp(st);
 			getline(st, pattern, ',');
-			while (pattern.back() == ' ')
-				pattern.pop_back();
-			if (pattern.back() == ')') { //end of tupleStr where should be timeout or end of output
-				if (req->reqType != Request::Output) { //not output, wrong input
-					cout << "Wrong input, in the end should be timeout" << endl;
-					delete tup;
-					return false;
-				}
-				else
-					pattern.pop_back(); //pop ')' from output
+			skipWhsp(pattern);
+			if (pattern.back() == ')') {//end of tupleStr, timeout or without
+				pattern.pop_back(); //pop ')'
+				skipWhsp(pattern);
 			}
 			Elem* el = new Elem(false, pattern);
 			tup->elems.push_back(*el);
@@ -112,11 +101,15 @@ bool CommandParser::parseCommand(string line, Request* req) {
 				getline(st, type, ')');
 				while (type.back() == ' ' || type.back() == ')') //remove bracket and whitespace from timeout var
 					type.pop_back();
+				skipWhsp(type);
+				if (type.back() == ')')
+					type.pop_back();
+				skipWhsp(type);
 				try {
 					req->timeout = stoul(type); //convert string to unsigned
 				}
 				catch (invalid_argument& e) {
-					cout << "Wrong input, cannot read timeout" << endl;
+					cout << "Wrong input, wrong timeout" << endl;
 					delete tup;
 					return false;
 				}
@@ -127,8 +120,7 @@ bool CommandParser::parseCommand(string line, Request* req) {
 			delete tup;
 			return false;
 		}
-		while (st.peek() == ' ')
-			st.ignore();
+		skipWhsp(st);
 	}
 	req->setTuple(tup);
 	return true;

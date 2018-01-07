@@ -11,7 +11,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <fstream>
-//#include <unordered_set>
 #include <map>
 #include "Request.h"
 #include "Reply.h"
@@ -74,13 +73,15 @@ int init() {
 	return 0;
 }
 /*
- * return:
- * 0 - no sign (==)
- * 1 - >
- * 2 - >=
- * 3 - <
- * 4 - <=
- * 5 - *
+ * @brief checks sign before string/integer
+ *
+ * returns:
+ * 		0: no sign (==)
+ * 		1: >
+ * 		2: >=
+ * 		3: <
+ * 		4: <=
+ * 		5: *
  */
 int checkIfSign(string pattern) {
 	if (pattern.size() > 1) {
@@ -98,23 +99,66 @@ int checkIfSign(string pattern) {
 	return 0; //only 1 char, cannot be sign
 }
 
+/*
+ * @brief compares string lexically
+ *
+ * returns:
+ * 		-1: str1 < str2
+ * 		 0: str1 == str2
+ * 		 1: str1 > str2
+ */
+int compareLex(string str1, string str2) {
+	for (unsigned i = 0; i < min(str1.size(), str2.size()); ++i) {
+		if (str1[i] == str2[i] || str2[i] == '*')
+			continue;
+		else if (str1[i] < str2[i])
+			return -1;
+		else if (str1[i] > str2[i])
+			return 1;
+	}
+	if (str1.size() < str2.size())
+		return -1;
+	else if (str1.size() > str2.size())
+		return 1;
+	else //same size
+		return 0;
+}
+
+/*
+ * @brief checks if element matches pattern
+ */
 bool checkPattern(Elem el1, Elem el2) {
 	if(el1.isString != el2.isString)
 		return false;
+	int sign = checkIfSign(el2.pattern);
+	int i; //offset in string
+	switch (sign) {
+		case 0: i = 0; break;
+		case 1:
+		case 3: i = 1; break;
+		case 2:
+		case 4: i = 2; break;
+		case 5: return true; //* - can be anything
+	}
 	if(el1.isString) {
-		return true; //to complete
+		int cmp = compareLex(el1.pattern, el2.pattern.substr(i));
+		switch (cmp) {
+			case -1:
+				if (sign == 3 || sign == 4) //str1<str2, sign < or <=
+					return true;
+				break;
+			case 0:
+				if (sign == 0 || sign == 2 || sign == 4) //str1==str2, no sign
+					return true;
+				break;
+			case 1:
+				if (sign == 1 || sign == 2) //str1>str2, sign > or >=
+					return true;
+				break;
+		}
+		return false;
 	}
 	else { //integer
-		int sign = checkIfSign(el2.pattern);
-		int i; //offset in string
-		switch (sign) {
-			case 0: i = 0; break;
-			case 1:
-			case 3: i = 1; break;
-			case 2:
-			case 4: i = 2; break;
-			case 5: return true; //* - can be anything
-		}
 		int first, second;
 		try {
 			first = stoi(el1.pattern);
@@ -153,38 +197,72 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
 			continue;
 		reply->isFound = true;
 		reply->setTuple(new Tuple(it->second));
+		if (opType == 0) //if input - delete tuple
+			tupleSpace.erase(it);
 		return reply;
 	}
 	reply->isFound = false;
 	return reply;
 }
-
-void* service(void *) {
+/**
+ * 	@brief	Adds sent tuple to tuple space
+ */
+void* writeService(void *) {
 	while(!stopThreadsFlag)
 	{
-		cout<<"service __ Request* req = readReqQueue.consumerEnter();"<<endl;
+		Request* req = writeReqQueue.consumerEnter();
+		cout<<"New Request in server write queue: "<<endl;
+		cout<<"Request from: " << req->procId <<endl;
+		cout<<"Request type: ";
+		switch(req->reqType) {
+			case Request::Output:
+				cout<<"output";break;
+			case Request::Input:
+			case Request::Read:
+			case Request::Stop:
+				cout<<"stop or wrong type"<<endl;
+				cout<<"Exiting..."<<endl;
+				delete req;
+				return 0;
+		}
+		cout<<endl<<"New tuple: "<<endl;
+		cout<<*(req->tuple)<<endl;
+
+		//insert new tuple
+		Tuple* tup = new Tuple(*(req->tuple));
+		tupleSpace.insert(make_pair(tup->getHash(), *tup));
+
+		cout<<"New tuple's been added"<<endl;
+		delete tup;
+		delete req;
+	}
+	return 0;
+}
+
+void* readService(void *) {
+	while(!stopThreadsFlag)
+	{
 		Request* req = readReqQueue.consumerEnter();
-		cout<<"New Request found in server readReqQueue - popped from queue: "<<endl;
+		cout<<"New Request in server read queue: "<<endl;
 		cout<<"Request from: " << req->procId <<endl;
 		cout<<"Request type: ";
 		switch(req->reqType) {
 			case Request::Input:
 				cout<<"input";break;
-			case Request::Output:
-				cout<<"output";break;
 			case Request::Read:
 				cout<<"read";break;
+			case Request::Output:
 			case Request::Stop:
-			{
-				cout<<"Request::Stop received in service() thread"<<endl;
+				cout<<"stop or wrong type"<<endl;
+				cout<<"Exiting..."<<endl;
 				delete req;
 				return 0;
-			}
 		}
 		cout<<endl<<"Requested tuple: "<<endl;
 		cout<<*(req->tuple)<<endl;
-		Reply * reply = search(req->tuple, req->reqType);
 
+		//Send reply
+		Reply * reply = search(req->tuple, req->reqType);
 		string clientFIFO = "/tmp/fifo.";
 		clientFIFO.append(to_string(req->procId));
 		ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
@@ -222,31 +300,17 @@ void * receptionistThread(void * iStream)
 	return 0;
 }
 
-void addTestSet() {
-	Tuple* tup = new Tuple();
-	string st1 = "std";
-	string st2 = "3";
-	Elem* el1 = new Elem(true, st1);
-	Elem* el2 = new Elem(false, st2);
-	tup->elems.push_back(*el1);
-	tup->elems.push_back(*el2);
-	tupleSpace.insert(make_pair(tup->getHash(), *tup));
-	delete tup;
-	delete el1;
-	delete el2;
-}
-
 int main() {
 	if (init() != 0)
 		return 0;
 
-	addTestSet();
 	ifstream inFIFO(serverPath, ifstream::binary);
 	ofstream outServerTmpFifo(serverPath, ofstream::binary);
 
-	pthread_t recThread, readerThread;
+	pthread_t recThread, readerThread, writerThread;
 	pthread_create(&recThread, NULL, &receptionistThread, static_cast<void *>(&inFIFO));
-	pthread_create(&readerThread, NULL, &service, NULL);
+	pthread_create(&readerThread, NULL, &readService, NULL);
+	pthread_create(&writerThread, NULL, &writeService, NULL);
 
 	sleep(360);
 
@@ -262,6 +326,7 @@ int main() {
 	// Join children threads
 	pthread_join(recThread, NULL);
 	pthread_join(readerThread, NULL);
+	pthread_join(writerThread, NULL);
 	unlink(serverPath);
 	cout<<"Server's pipe's been unlinked (main)"<<endl;
 

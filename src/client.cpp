@@ -72,7 +72,7 @@ int main() {
 	ofstream outFIFO(serverPath, ofstream::binary);
 	// Get new Request from user
 	bool exit = false;
-	while(!exit) {
+	while(true) {
 		Request *req = new Request();
 		bool correct = false;
 		do {
@@ -90,19 +90,23 @@ int main() {
 			break;
 		}
 		sendRequest(&outFIFO, serverFifoSemaphore,req);
+		if (req->reqType == Request::Output) {
+			cout<<"Tuple's been sent"<<endl;
+			delete req;
+			continue;
+		}
 		cout<<"Request for tuple has been sent"<<endl;
-		cout<<*req;
 		delete req;
 
 		// Get reply from server
 		Reply* rep = new Reply();
 		ifstream inFIFO(pipePath.c_str(), ifstream::binary);
 		ofstream outClientTmpFifo(pipePath, ofstream::binary);
-		cout<<"Waiting for reply"<<endl;
+		cout<<"Waiting for reply..."<<endl;
 		inFIFO >> *rep;
 
 		if (rep->isFound) {
-			cout<<"Reply: "<<endl;
+			cout<<"Replied tuple: "<<endl;
 			cout<<*(rep->tuple);
 		}
 		else
