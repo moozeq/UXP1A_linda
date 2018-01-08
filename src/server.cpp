@@ -213,6 +213,32 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
 	reply->isFound = false;
 	return reply;
 }
+
+/**
+ *	@brief	Function which searches for the request which insertedTuple matches to.
+ *	Additionally when iterating through the pendingRequests list out-of-date requests
+ *	are removed.
+ *
+ *	@param	insertedTuple is pointer to newly inserted (into tuple space) tuple
+ */
+void updatePendingQueue(const Tuple * insertedTuple){
+	std::unique_lock<std::mutex> uLock(pendingRequests.getMutex());
+	std::list<Request *> & pending = pendingRequests.getList();
+	bool tupleMatched = false;
+	for(std::list<Request *>::iterator it = pending.begin(); it != pending.end(); ++it){
+		if(!tupleMatched && tuplesMatch(*insertedTuple, *((*it)->tuple))){
+			readReqQueue.pushToFront(*it);
+			pending.erase(it);
+			tupleMatched = true;
+		}
+		else{
+			if((*it)->timeout < std::time(nullptr)){
+				pending.erase(it);
+			}
+		}
+	}
+}
+
 /**
  * 	@brief	Adds sent tuple to tuple space
  */
@@ -240,32 +266,13 @@ void* writeService(void *) {
 		//insert new tuple
 		Tuple* tup = new Tuple(*(req->tuple));
 		tupleSpace.insert(make_pair(tup->getHash(), *tup));
+		updatePendingQueue(tup);
 
 		cout<<"New tuple's been added"<<endl;
 		delete tup;
 		delete req;
 	}
 	return 0;
-}
-
-/**
- *
- */
-void updatePendingQueue(const Tuple * insertedTuple){
-	const std::list<Request *> & pending = pendingRequests.getList();
-	bool tupleMatched = false;
-	for(auto it = pending.begin(); it != pending.end(); ++it){
-		if(!tupleMatched && tuplesMatch(*insertedTuple, *((*it)->tuple))){
-			readReqQueue.pushToFront(*it);
-			pendingRequests.erase(it);
-			tupleMatched = true;
-		}
-		else{
-			if((*it)->timeout < std::time(nullptr)){
-				pendingRequests.erase(it);
-			}
-		}
-	}
 }
 
 void* readService(void *) {
@@ -292,14 +299,25 @@ void* readService(void *) {
 
 		//Send reply
 		Reply * reply = search(req->tuple, req->reqType);
-		string clientFIFO = "/tmp/fifo.";
-		clientFIFO.append(to_string(req->procId));
-		ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
+		if(!reply->isFound)
+		{
+			if(req->timeout > std::time(nullptr))
+				pendingRequests.push_back(req);
+			else
+				delete req;
+		}
+		else
+		{
+			string clientFIFO = "/tmp/fifo.";
+			clientFIFO.append(to_string(req->procId));
+			ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
 
-		outFIFO << *reply;
-		cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
+			outFIFO << *reply;
+			cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
+			delete req;
+		}
+
 		delete reply;
-		delete req;
 	}
 	return 0;
 }
@@ -323,8 +341,11 @@ void * receptionistThread(void * iStream)
 		}
 		else
 		{
-			currTime = std::time(nullptr);		// get current time (in seconds)
-			incomingReq->timeout += currTime;	// set expiration time
+			if(incomingReq->timeout != 0)
+			{
+				currTime = std::time(nullptr);		// get current time (in seconds)
+				incomingReq->timeout += currTime;	// set expiration time
+			}
 			readReqQueue.producerEnter(incomingReq);
 		}
 		cout<<"New request received in server receptionist thread..."<<endl;

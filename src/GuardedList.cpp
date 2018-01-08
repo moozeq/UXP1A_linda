@@ -8,9 +8,14 @@ GuardedList::~GuardedList()
 	}
 }
 
-const std::list<Request *> GuardedList::getList(void) const
+std::list<Request *> & GuardedList::getList(void)
 {
 	return list;
+}
+
+std::mutex & GuardedList::getMutex(void)
+{
+	return mtx;
 }
 
 void GuardedList::push_back(Request * r)
