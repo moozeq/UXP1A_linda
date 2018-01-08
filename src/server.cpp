@@ -11,7 +11,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include "Request.h"
 #include "Reply.h"
 #include "GuardedQueue.h"
@@ -23,7 +23,7 @@ const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
 sem_t * inputFifoSemaphore;
-multimap<size_t, Tuple> tupleSpace; //Global tuple space
+unordered_multimap<size_t, Tuple> tupleSpace; //Global tuple space
 bool stopThreadsFlag;
 
 void sig_handler(int signo) {
@@ -127,10 +127,10 @@ int compareLex(string str1, string str2) {
 /*
  * @brief checks if element matches pattern
  */
-bool checkPattern(Elem el1, Elem el2) {
-	if(el1.isString != el2.isString)
+bool checkPattern(Elem elemFromSpace, Elem elemPattern) {
+	if(elemFromSpace.isString != elemPattern.isString)
 		return false;
-	int sign = checkIfSign(el2.pattern);
+	int sign = checkIfSign(elemPattern.pattern);
 	int i; //offset in string
 	switch (sign) {
 		case 0: i = 0; break;
@@ -140,8 +140,8 @@ bool checkPattern(Elem el1, Elem el2) {
 		case 4: i = 2; break;
 		case 5: return true; //* - can be anything
 	}
-	if(el1.isString) {
-		int cmp = compareLex(el1.pattern, el2.pattern.substr(i));
+	if(elemFromSpace.isString) {
+		int cmp = compareLex(elemFromSpace.pattern, elemPattern.pattern.substr(i));
 		switch (cmp) {
 			case -1:
 				if (sign == 3 || sign == 4) //str1<str2, sign < or <=
@@ -161,8 +161,8 @@ bool checkPattern(Elem el1, Elem el2) {
 	else { //integer
 		int first, second;
 		try {
-			first = stoi(el1.pattern);
-			second = stoi(el2.pattern.substr(i));
+			first = stoi(elemFromSpace.pattern);
+			second = stoi(elemPattern.pattern.substr(i));
 		}
 		catch (invalid_argument& e) {
 			return false;
@@ -183,10 +183,10 @@ bool checkPattern(Elem el1, Elem el2) {
  */
 Reply* search(const Tuple* reqTup, unsigned opType) {
 	Reply* reply = new Reply();
-	pair <multimap<size_t, Tuple>::iterator, multimap<size_t, Tuple>::iterator> ret;
+	pair <unordered_multimap<size_t, Tuple>::iterator, unordered_multimap<size_t, Tuple>::iterator> ret;
 	const size_t tupHash = reqTup->getHash();
 	ret = tupleSpace.equal_range(tupHash);
-	for (multimap<size_t, Tuple>::iterator it = ret.first; it != ret.second; ++it)
+	for (unordered_multimap<size_t, Tuple>::iterator it = ret.first; it != ret.second; ++it)
 	{
 		unsigned i;
 		for (i = 0; i < reqTup->elems.size(); ++i) {

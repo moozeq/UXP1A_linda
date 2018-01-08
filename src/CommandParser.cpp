@@ -82,8 +82,8 @@ bool CommandParser::parseCommand(string line, Request* req) {
 				delete tup;
 				return false;
 			}
-			Elem* el = new Elem(true, pattern);
-			tup->elems.push_back(*el);
+			Elem el(true, pattern);
+			tup->elems.push_back(el);
 		}
 		else if (type == "integer") {
 			skipWhsp(st);
@@ -93,8 +93,8 @@ bool CommandParser::parseCommand(string line, Request* req) {
 				pattern.pop_back(); //pop ')'
 				skipWhsp(pattern);
 			}
-			Elem* el = new Elem(false, pattern);
-			tup->elems.push_back(*el);
+			Elem el(false, pattern);
+			tup->elems.push_back(el);
 		}
 		else { //didn't recognize type, not string nor integer, may be timeout
 			if ((req->reqType == Request::Input || req->reqType == Request::Read) && tup->elems.size() > 0) { //timeout in read & input
