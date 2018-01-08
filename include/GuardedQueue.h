@@ -10,6 +10,7 @@ class GuardedQueue
 {
 public:
 	void producerEnter(Request * request);
+	void pushToFront(Request * request);
 	Request * consumerEnter();
 	size_t size(void);
 	~GuardedQueue();

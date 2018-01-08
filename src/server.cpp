@@ -12,9 +12,11 @@
 #include <pthread.h>
 #include <fstream>
 #include <unordered_map>
+#include <list>
 #include "Request.h"
 #include "Reply.h"
 #include "GuardedQueue.h"
+#include "GuardedList.h"
 #include <semaphore.h>
 
 using namespace std;
@@ -22,9 +24,9 @@ const char* serverPath = "/tmp/fifo.server";
 const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
+GuardedList pendingRequests;
 sem_t * inputFifoSemaphore;
 unordered_multimap<size_t, Tuple> tupleSpace; //Global tuple space
-bool stopThreadsFlag;
 
 void sig_handler(int signo) {
 	if(signo == SIGINT) {
@@ -67,7 +69,6 @@ int init() {
 	        exit(EXIT_FAILURE);
 	}
 
-	stopThreadsFlag = false;
 	signal(SIGINT, sig_handler);
 	createServerPipe(serverPath);
 	return 0;
@@ -179,6 +180,19 @@ bool checkPattern(Elem elemFromSpace, Elem elemPattern) {
 }
 
 /**
+ * 	@brief	Checks if selected tuple matches requested tuple (pattern)
+ *
+ * 	@return	true if selected tuple matches pattern tuple
+ */
+bool tuplesMatch(const Tuple & selTuple, const Tuple & patternTuple) {
+	for (unsigned i = 0; i < patternTuple.elems.size(); ++i) {
+			if (!checkPattern(selTuple.elems[i], patternTuple.elems[i]))
+				return false;
+	}
+	return true;
+}
+
+/**
  * 	@brief	Finds tuple in tuple space and returns reply.
  */
 Reply* search(const Tuple* reqTup, unsigned opType) {
@@ -188,12 +202,7 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
 	ret = tupleSpace.equal_range(tupHash);
 	for (unordered_multimap<size_t, Tuple>::iterator it = ret.first; it != ret.second; ++it)
 	{
-		unsigned i;
-		for (i = 0; i < reqTup->elems.size(); ++i) {
-			if (!checkPattern(it->second.elems[i], reqTup->elems[i]))
-				break;
-		}
-		if (i != reqTup->elems.size())
+		if(!tuplesMatch(it->second, *reqTup))
 			continue;
 		reply->isFound = true;
 		reply->setTuple(new Tuple(it->second));
@@ -208,7 +217,7 @@ Reply* search(const Tuple* reqTup, unsigned opType) {
  * 	@brief	Adds sent tuple to tuple space
  */
 void* writeService(void *) {
-	while(!stopThreadsFlag)
+	while(true)
 	{
 		Request* req = writeReqQueue.consumerEnter();
 		cout<<"New Request in server write queue: "<<endl;
@@ -239,8 +248,28 @@ void* writeService(void *) {
 	return 0;
 }
 
+/**
+ *
+ */
+void updatePendingQueue(const Tuple * insertedTuple){
+	const std::list<Request *> & pending = pendingRequests.getList();
+	bool tupleMatched = false;
+	for(auto it = pending.begin(); it != pending.end(); ++it){
+		if(!tupleMatched && tuplesMatch(*insertedTuple, *((*it)->tuple))){
+			readReqQueue.pushToFront(*it);
+			pendingRequests.erase(it);
+			tupleMatched = true;
+		}
+		else{
+			if((*it)->timeout < std::time(nullptr)){
+				pendingRequests.erase(it);
+			}
+		}
+	}
+}
+
 void* readService(void *) {
-	while(!stopThreadsFlag)
+	while(true)
 	{
 		Request* req = readReqQueue.consumerEnter();
 		cout<<"New Request in server read queue: "<<endl;
@@ -278,8 +307,8 @@ void* readService(void *) {
 void * receptionistThread(void * iStream)
 {
 	ifstream * inFifo = static_cast<ifstream *>(iStream);
-
-	while(!stopThreadsFlag)
+	std::time_t currTime;
+	while(true)
 	{
 		Request * incomingReq = new Request();
 		*inFifo >> *incomingReq;
@@ -293,7 +322,11 @@ void * receptionistThread(void * iStream)
 			return 0;
 		}
 		else
+		{
+			currTime = std::time(nullptr);		// get current time (in seconds)
+			incomingReq->timeout += currTime;	// set expiration time
 			readReqQueue.producerEnter(incomingReq);
+		}
 		cout<<"New request received in server receptionist thread..."<<endl;
 		cout<<*(incomingReq->tuple)<<endl;
 	}
@@ -312,10 +345,12 @@ int main() {
 	pthread_create(&readerThread, NULL, &readService, NULL);
 	pthread_create(&writerThread, NULL, &writeService, NULL);
 
-	sleep(360);
+	string command="";
+	while(command != "exit"){
+		getline(cin, command);
+	}
 
 	// Stop children threads - send Stop request
-	stopThreadsFlag = true;
 	Request * r = new Request();
 	r->procId = getpid();
 	r->reqType = Request::Stop;

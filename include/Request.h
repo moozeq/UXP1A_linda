@@ -32,7 +32,7 @@ public:
 	};
 	unsigned procId;
 	ReqType reqType; //0 - input, 1 - output, 2 - read
-	unsigned timeout; //in seconds
+	std::time_t timeout; //in seconds
 	const Tuple* tuple;
 
 	friend std::ostream& operator<<(std::ostream &os, const Request& req);
