@@ -35,3 +35,14 @@ std::ostream & operator<<(std::ostream & os, const Tuple & tuple)
 		os << std::boolalpha << e.isString << ", " << e.pattern << std::endl;
 	return os;
 }
+
+const size_t Tuple::getHash() const {
+	size_t hashValue = elems.size();
+	int counter = 0;
+	for(const Elem & e : elems)
+	{
+		hashValue |= ((int)e.isString << (counter%32));
+		++counter;
+	}
+	return hashValue;
+}
