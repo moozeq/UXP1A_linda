@@ -25,6 +25,7 @@ class Request
 {
 public:
 	enum ReqType{
+		UpdatePendingRequests = -2,
 		Stop = -1,
 		Input,
 		Output,

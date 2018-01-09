@@ -1,9 +1,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <wait.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <termios.h>
 #include <stdlib.h>
 #include <iostream>
 #include <string>
@@ -22,6 +24,8 @@
 using namespace std;
 const char* serverPath = "/tmp/fifo.server";
 const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
+const char * logFileName = "Linda_server.log";
+ofstream logFile;
 GuardedQueue writeReqQueue;
 GuardedQueue readReqQueue;
 GuardedList pendingRequests;
@@ -31,15 +35,16 @@ unordered_multimap<size_t, Tuple> tupleSpace; //Global tuple space
 void sig_handler(int signo) {
 	if(signo == SIGINT) {
 		unlink(serverPath);
-		cout<<"Server's pipe's been unlinked"<<endl;
+		logFile<<"Server's pipe's been unlinked"<<endl;
+		logFile.close();
 	}
 }
 
 void createServerPipe(const char* serverPath) {
 	umask(0);
 	mkfifo(serverPath, 0666);
-	cout<<"Server's FIFO's been created at ";
-	cout<<serverPath<<endl;
+	logFile<<"Server's FIFO's been created at ";
+	logFile<<serverPath<<endl;
 }
 
 void sendRequest(ofstream * outStream, sem_t * semaphore, const Request * req)
@@ -53,10 +58,10 @@ void sendRequest(ofstream * outStream, sem_t * semaphore, const Request * req)
 
 int init() {
 	pid_t serverPid = getpid();
-	cout<<"Server's starting..."<<endl<<"Server's PID: "<<serverPid<<endl;
+	logFile<<"Server's starting..."<<endl<<"Server's PID: "<<serverPid<<endl;
 
 	if(access(serverPath, F_OK) != -1) {
-		cout<<"Server's already existed, exiting...";
+		logFile<<"Server's already existed, exiting...";
 		return 1;
 	}
 
@@ -71,6 +76,7 @@ int init() {
 
 	signal(SIGINT, sig_handler);
 	createServerPipe(serverPath);
+	logFile.open(logFileName, ios::out);
 	return 0;
 }
 /*
@@ -225,18 +231,19 @@ void updatePendingQueue(const Tuple * insertedTuple){
 	std::unique_lock<std::mutex> uLock(pendingRequests.getMutex());
 	std::list<Request *> & pending = pendingRequests.getList();
 	bool tupleMatched = false;
-	cout<<"**********Pending Queue - size: "<<pending.size()<<endl;
+	logFile<<"**********Pending Queue - size: "<<pending.size()<<endl;
 	for(std::list<Request *>::iterator it = pending.begin(); it != pending.end(); ++it){
 		if((*it)->timeout < std::time(nullptr)){
 			readReqQueue.producerEnter(*it);	// push to readThread queue to send empty reply
 			it = pending.erase(it);
-			cout<<"**********Pending Queue - 1 out-of-date element removed"<<endl;
+			logFile<<"**********Pending Queue - 1 out-of-date element removed"<<endl;
 		}
-		else if(!tupleMatched && tuplesMatch(*insertedTuple, *((*it)->tuple))){
+		else if(insertedTuple != nullptr && !tupleMatched
+				&& tuplesMatch(*insertedTuple, *((*it)->tuple))){
 			readReqQueue.pushToFront(*it);
 			it = pending.erase(it);
 			tupleMatched = true;
-			cout<<"**********Pending Queue - updated 1 element."<<endl;
+			logFile<<"**********Pending Queue - updated 1 element."<<endl;
 		}
 	}
 }
@@ -248,29 +255,32 @@ void* writeService(void *) {
 	while(true)
 	{
 		Request* req = writeReqQueue.consumerEnter();
-		cout<<"-> New Request in server write queue: "<<endl;
-		cout<<"-> Request from: " << req->procId <<endl;
-		cout<<"-> Request type: ";
+		logFile<<"-> New Request in server write queue: "<<endl;
+		logFile<<"-> Request from: " << req->procId <<endl;
+		logFile<<"-> Request type: ";
 		switch(req->reqType) {
 			case Request::Output:
-				cout<<"-> output\n";break;
+				logFile<<"output\n";break;
+			case Request::UpdatePendingRequests:	// remove out-of-date requests
+				logFile<<"UpdatePendingReauests"<<endl;
+				updatePendingQueue(nullptr);
+				delete req;
+				continue;
 			case Request::Input:
 			case Request::Read:
 			case Request::Stop:
-				cout<<"-> stop or wrong type"<<endl;
-				cout<<"-> Exiting..."<<endl;
+				logFile<<"stop or wrong type"<<endl;
+				logFile<<"Exiting..."<<endl;
 				delete req;
 				return 0;
 		}
-//		cout<<endl<<"-> New tuple: "<<endl;
-//		cout<<*(req->tuple)<<endl;
 
 		//insert new tuple
 		Tuple* tup = new Tuple(*(req->tuple));
 		tupleSpace.insert(make_pair(tup->getHash(), *tup));
 		updatePendingQueue(tup);
 
-		cout<<"New tuple's been added"<<endl;
+		logFile<<"New tuple's been added"<<endl;
 		delete tup;
 		delete req;
 	}
@@ -284,30 +294,29 @@ void sendReplyToClient(Reply * rep, unsigned procId)
 	ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
 
 	outFIFO << *rep;
-	cout<<"_____Reply to client"<<procId <<", has been sent"<<endl;
+	logFile<<"_____Reply to client"<<procId <<", has been sent"<<endl;
 }
 
 void* readService(void *) {
 	while(true)
 	{
 		Request* req = readReqQueue.consumerEnter();
-		cout<<"_____New Request in server read queue: "<<endl;
-		cout<<"_____Request from: " << req->procId <<endl;
-		cout<<"_____Request type: ";
+		logFile<<"_____New Request in server read queue: "<<endl;
+		logFile<<"_____Request from: " << req->procId <<endl;
+		logFile<<"_____Request type: ";
 		switch(req->reqType) {
 			case Request::Input:
-				cout<<"_____input\n";break;
+				logFile<<"_____input\n";break;
 			case Request::Read:
-				cout<<"_____read\n";break;
+				logFile<<"_____read\n";break;
 			case Request::Output:
 			case Request::Stop:
-				cout<<"_____stop or wrong type"<<endl;
-				cout<<"_____Exiting..."<<endl;
+			case Request::UpdatePendingRequests:
+				logFile<<"_____stop or wrong type"<<endl;
+				logFile<<"_____Exiting..."<<endl;
 				delete req;
 				return 0;
 		}
-//		cout<<endl<<"Requested tuple: "<<endl;
-//		cout<<*(req->tuple)<<endl;
 
 		//Send reply
 		Reply * reply;
@@ -325,7 +334,7 @@ void* readService(void *) {
 			{
 				if(req->timeout > std::time(nullptr)){	// request is still valid (timout ok)
 					pendingRequests.push_back(req);
-					cout<<"_____request for non-exeisting tuple, Request pushed to pendingQueue...\n";
+					logFile<<"_____request for non-existing tuple, Request pushed to pendingQueue...\n";
 				}
 				else		// request invalid (timeout) - send empty reply and delete request
 				{
@@ -352,28 +361,55 @@ void * receptionistThread(void * iStream)
 	{
 		Request * incomingReq = new Request();
 		*inFifo >> *incomingReq;
-		if(incomingReq->reqType == Request::Output)
-			writeReqQueue.producerEnter(incomingReq);
-		else if(incomingReq->reqType == Request::Stop)
-		{
-			Request * doubledReq = new Request(*incomingReq);
-			readReqQueue.producerEnter(doubledReq);
-			writeReqQueue.producerEnter(incomingReq);
-			return 0;
-		}
-		else
-		{
-			if(incomingReq->timeout != 0)
+		switch(incomingReq->reqType){
+			case Request::Output:
+			case Request::UpdatePendingRequests:
+				writeReqQueue.producerEnter(incomingReq);
+				break;
+			case Request::Stop:
 			{
-				currTime = std::time(nullptr);		// get current time (in seconds)
-				incomingReq->timeout += currTime;	// set expiration time
+				Request * doubledReq = new Request(*incomingReq);
+				readReqQueue.producerEnter(doubledReq);
+				writeReqQueue.producerEnter(incomingReq);
+				return 0;
 			}
-			readReqQueue.producerEnter(incomingReq);
+			case Request::Input:
+			case Request::Read:
+			{
+				if(incomingReq->timeout != 0)
+				{
+					currTime = std::time(nullptr);		// get current time (in seconds)
+					incomingReq->timeout += currTime;	// set expiration time
+				}
+				readReqQueue.producerEnter(incomingReq);
+				break;
+			}
+			default:
+				break;
 		}
-		cout<<"\t\t\t\t\tNew request received in server receptionist thread..."<<endl;
-		cout<<"\t\t\t\t\t"<<incomingReq->procId<<endl;
+		logFile<<"\t\t\t\t\tNew request received in server receptionist thread..."<<endl;
+		logFile<<"\t\t\t\t\tFrom process: "<<incomingReq->procId<<endl;
+		logFile<<"\t\t\t\t\tRequest type: "<<incomingReq->reqType<<endl;
 	}
 	return 0;
+}
+
+void sendStopRequest(ofstream * os)
+{
+	Request * r = new Request();
+	r->procId = getpid();
+	r->reqType = Request::Stop;
+	sendRequest(os, inputFifoSemaphore, r);
+	delete r;
+}
+
+void sendUpdatePendingRequest(ofstream * os)
+{
+	Request * r = new Request();
+	r->procId = getpid();
+	r->reqType = Request::UpdatePendingRequests;
+	sendRequest(os, inputFifoSemaphore, r);
+	delete r;
 }
 
 int main() {
@@ -388,26 +424,51 @@ int main() {
 	pthread_create(&readerThread, NULL, &readService, NULL);
 	pthread_create(&writerThread, NULL, &writeService, NULL);
 
-	string command="";
-	while(command != "exit"){
-		getline(cin, command);
+	struct termios oldSettings, newSettings;
+	tcgetattr( fileno( stdin ), &oldSettings );
+	newSettings = oldSettings;
+	newSettings.c_lflag &= (~ICANON & ~ECHO);
+	tcsetattr( fileno( stdin ), TCSANOW, &newSettings );
+	while(1)
+	{
+		// Timeout-ed keyboard reading based on http://www.cplusplus.com/forum/general/5304/#msg23940
+		fd_set set;
+		struct timeval tv;
+
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		FD_ZERO( &set );
+		FD_SET( fileno( stdin ), &set );
+
+		int res = select( fileno( stdin )+1, &set, NULL, NULL, &tv );
+		if( res > 0 )
+		{
+			char c;
+			printf( "Input available\n" );
+			read( fileno( stdin ), &c, 1 );
+			cin.clear();
+			break;
+		}
+		else if( res < 0 )
+		{
+			perror( "select error" );
+			break;
+		}
+		sendUpdatePendingRequest(&outServerTmpFifo);
+		sleep(1);
 	}
 
+	tcsetattr( fileno( stdin ), TCSANOW, &oldSettings );
 	// Stop children threads - send Stop request
-	Request * r = new Request();
-	r->procId = getpid();
-	r->reqType = Request::Stop;
-	r->timeout = 713;
-	sendRequest(&outServerTmpFifo, inputFifoSemaphore, r);
-	delete r;
+	sendStopRequest(&outServerTmpFifo);
 
 	// Join children threads
 	pthread_join(recThread, NULL);
 	pthread_join(readerThread, NULL);
 	pthread_join(writerThread, NULL);
 	unlink(serverPath);
-	cout<<"Server's pipe's been unlinked (main)"<<endl;
-
+	logFile<<"Server's pipe's been unlinked (main)"<<endl;
+	logFile.close();
 	// Close and unlink semaphore
 	if (sem_close(inputFifoSemaphore) < 0) {
 		perror("sem_close(3) failed");
