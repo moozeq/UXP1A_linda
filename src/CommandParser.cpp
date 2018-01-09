@@ -24,6 +24,15 @@ bool CommandParser::checkIfExit(string line) {
 	return line == ex;
 }
 
+void CommandParser::changeToDefSendRcvMessage(std::string & command)
+{
+	if(command == "defs")
+		command = "output(integer:13,string:\"siema\")";
+	else if(command == "defr")
+		command = "input(integer:13,string:\"siema\",100)";
+}
+
+
 void skipWhsp(string& str) {
 	while (str.back() == ' ')
 		str.pop_back();

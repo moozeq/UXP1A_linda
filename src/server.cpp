@@ -225,16 +225,18 @@ void updatePendingQueue(const Tuple * insertedTuple){
 	std::unique_lock<std::mutex> uLock(pendingRequests.getMutex());
 	std::list<Request *> & pending = pendingRequests.getList();
 	bool tupleMatched = false;
+	cout<<"**********Pending Queue - size: "<<pending.size()<<endl;
 	for(std::list<Request *>::iterator it = pending.begin(); it != pending.end(); ++it){
-		if(!tupleMatched && tuplesMatch(*insertedTuple, *((*it)->tuple))){
-			readReqQueue.pushToFront(*it);
-			pending.erase(it);
-			tupleMatched = true;
+		if((*it)->timeout < std::time(nullptr)){
+			readReqQueue.producerEnter(*it);	// push to readThread queue to send empty reply
+			it = pending.erase(it);
+			cout<<"**********Pending Queue - 1 out-of-date element removed"<<endl;
 		}
-		else{
-			if((*it)->timeout < std::time(nullptr)){
-				pending.erase(it);
-			}
+		else if(!tupleMatched && tuplesMatch(*insertedTuple, *((*it)->tuple))){
+			readReqQueue.pushToFront(*it);
+			it = pending.erase(it);
+			tupleMatched = true;
+			cout<<"**********Pending Queue - updated 1 element."<<endl;
 		}
 	}
 }
@@ -246,22 +248,22 @@ void* writeService(void *) {
 	while(true)
 	{
 		Request* req = writeReqQueue.consumerEnter();
-		cout<<"New Request in server write queue: "<<endl;
-		cout<<"Request from: " << req->procId <<endl;
-		cout<<"Request type: ";
+		cout<<"-> New Request in server write queue: "<<endl;
+		cout<<"-> Request from: " << req->procId <<endl;
+		cout<<"-> Request type: ";
 		switch(req->reqType) {
 			case Request::Output:
-				cout<<"output";break;
+				cout<<"-> output\n";break;
 			case Request::Input:
 			case Request::Read:
 			case Request::Stop:
-				cout<<"stop or wrong type"<<endl;
-				cout<<"Exiting..."<<endl;
+				cout<<"-> stop or wrong type"<<endl;
+				cout<<"-> Exiting..."<<endl;
 				delete req;
 				return 0;
 		}
-		cout<<endl<<"New tuple: "<<endl;
-		cout<<*(req->tuple)<<endl;
+//		cout<<endl<<"-> New tuple: "<<endl;
+//		cout<<*(req->tuple)<<endl;
 
 		//insert new tuple
 		Tuple* tup = new Tuple(*(req->tuple));
@@ -275,48 +277,68 @@ void* writeService(void *) {
 	return 0;
 }
 
+void sendReplyToClient(Reply * rep, unsigned procId)
+{
+	string clientFIFO = "/tmp/fifo.";
+	clientFIFO.append(to_string(procId));
+	ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
+
+	outFIFO << *rep;
+	cout<<"_____Reply to client"<<procId <<", has been sent"<<endl;
+}
+
 void* readService(void *) {
 	while(true)
 	{
 		Request* req = readReqQueue.consumerEnter();
-		cout<<"New Request in server read queue: "<<endl;
-		cout<<"Request from: " << req->procId <<endl;
-		cout<<"Request type: ";
+		cout<<"_____New Request in server read queue: "<<endl;
+		cout<<"_____Request from: " << req->procId <<endl;
+		cout<<"_____Request type: ";
 		switch(req->reqType) {
 			case Request::Input:
-				cout<<"input";break;
+				cout<<"_____input\n";break;
 			case Request::Read:
-				cout<<"read";break;
+				cout<<"_____read\n";break;
 			case Request::Output:
 			case Request::Stop:
-				cout<<"stop or wrong type"<<endl;
-				cout<<"Exiting..."<<endl;
+				cout<<"_____stop or wrong type"<<endl;
+				cout<<"_____Exiting..."<<endl;
 				delete req;
 				return 0;
 		}
-		cout<<endl<<"Requested tuple: "<<endl;
-		cout<<*(req->tuple)<<endl;
+//		cout<<endl<<"Requested tuple: "<<endl;
+//		cout<<*(req->tuple)<<endl;
 
 		//Send reply
-		Reply * reply = search(req->tuple, req->reqType);
-		if(!reply->isFound)
+		Reply * reply;
+		if(req->timeout != 0 && req->timeout < std::time(nullptr))	// Send empty reply if timeout exceeded (without searching)
 		{
-			if(req->timeout > std::time(nullptr))
-				pendingRequests.push_back(req);
-			else
-				delete req;
+			reply = new Reply();
+			reply->isFound = false;
+			sendReplyToClient(reply, req->procId);
+			delete req;
 		}
 		else
 		{
-			string clientFIFO = "/tmp/fifo.";
-			clientFIFO.append(to_string(req->procId));
-			ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
-
-			outFIFO << *reply;
-			cout<<"Reply to client"<<req->procId <<", has been sent"<<endl;
-			delete req;
+			Reply * reply = search(req->tuple, req->reqType);
+			if(!reply->isFound)		// if requested tuple found in tuple space
+			{
+				if(req->timeout > std::time(nullptr)){	// request is still valid (timout ok)
+					pendingRequests.push_back(req);
+					cout<<"_____request for non-exeisting tuple, Request pushed to pendingQueue...\n";
+				}
+				else		// request invalid (timeout) - send empty reply and delete request
+				{
+					sendReplyToClient(reply, req->procId);
+					delete req;
+				}
+			}
+			else					// tuple not found in tuple space
+			{
+				sendReplyToClient(reply, req->procId);
+				delete req;
+			}
 		}
-
 		delete reply;
 	}
 	return 0;
@@ -348,8 +370,8 @@ void * receptionistThread(void * iStream)
 			}
 			readReqQueue.producerEnter(incomingReq);
 		}
-		cout<<"New request received in server receptionist thread..."<<endl;
-		cout<<*(incomingReq->tuple)<<endl;
+		cout<<"\t\t\t\t\tNew request received in server receptionist thread..."<<endl;
+		cout<<"\t\t\t\t\t"<<incomingReq->procId<<endl;
 	}
 	return 0;
 }
