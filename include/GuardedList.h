@@ -13,7 +13,6 @@ public:
 	std::list<Request *> & getList(void);
 	std::mutex & getMutex(void);
 	void push_back(Request * r);
-	void erase(std::list<Request *>::const_iterator it);
 
 private:
 	std::list<Request *> list;
