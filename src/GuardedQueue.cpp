@@ -17,6 +17,15 @@ void GuardedQueue::producerEnter(Request * request)
 		emptyCond.notify_one();
 }
 
+void GuardedQueue::pushToFront(Request * request)
+{
+	std::unique_lock<std::mutex> uLock(mtx);
+	queue.push_front(request);
+
+	if(queue.size() == 1)
+		emptyCond.notify_one();
+}
+
 Request * GuardedQueue::consumerEnter()
 {
 	std::unique_lock<std::mutex> uLock(mtx);

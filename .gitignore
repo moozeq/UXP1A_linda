@@ -21,3 +21,6 @@
 # Build directories
 debug/
 release/
+
+# log files
+*.log

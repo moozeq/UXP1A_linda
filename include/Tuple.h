@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <time.h>
+#include <ctime>
 #include <string>
 #include <vector>
 #include <fstream>

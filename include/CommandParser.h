@@ -11,6 +11,7 @@ class CommandParser {
 public:
 	static bool parseCommand(std::string line, Request* req);
 	static bool checkIfExit(std::string line);
+	static void changeToDefSendRcvMessage(std::string & command);
 	static void showOptions();
 };
 

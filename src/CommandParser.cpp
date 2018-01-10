@@ -24,6 +24,16 @@ bool CommandParser::checkIfExit(string line) {
 	return line == ex;
 }
 
+// Parse for the default requests (testing purpose)
+void CommandParser::changeToDefSendRcvMessage(std::string & command)
+{
+	if(command == "ds")			//default send
+		command = "output(integer:13,string:\"siema\")";
+	else if(command == "dr")	//default receive
+		command = "input(integer:13,string:\"siema\",100)";
+}
+
+
 void skipWhsp(string& str) {
 	while (str.back() == ' ')
 		str.pop_back();

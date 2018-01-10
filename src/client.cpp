@@ -82,6 +82,7 @@ int main() {
 			exit = CommandParser::checkIfExit(line);
 			if (exit)
 				break;
+			CommandParser::changeToDefSendRcvMessage(line);
 			correct = CommandParser::parseCommand(line, req);
 		} while (!correct);
 
