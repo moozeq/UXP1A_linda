@@ -42,15 +42,25 @@ int main() {
 		}
 		switch (req->reqType) {
 		case Request::Input:
-			linda_input(*(req->tuple), req->timeout); break;
+			linda_input(req); break;
 		case Request::Output:
-			linda_output(*(req->tuple)); break;
+			linda_output(req); break;
 		case Request::Read:
-			linda_read(*(req->tuple), req->timeout); break;
+			linda_read(req); break;
+		default:
+			break;
 		}
 
 		delete req;
 	}
+
+	// Another usage
+	linda_output({{true, std::string("drugaKrotka")},
+		{true, std::string("testowa")},{false, std::string("19")}, {true, std::string("koniec")}});
+
+	// Another usage
+	linda_output(Tuple({{true, string("prostaKrotka")}}));
+
 	cout<<"Client" << getpid() << " exited" << endl;
 	return 0;
 }

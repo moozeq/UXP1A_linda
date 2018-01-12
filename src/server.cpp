@@ -444,10 +444,12 @@ int main() {
 		if( res > 0 )
 		{
 			char c;
-			printf( "Input available\n" );
 			read( fileno( stdin ), &c, 1 );
 			cin.clear();
-			break;
+			if(c == 'q'){
+				printf("Server terminated by quit command...");
+				break;
+			}
 		}
 		else if( res < 0 )
 		{

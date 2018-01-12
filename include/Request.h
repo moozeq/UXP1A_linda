@@ -51,6 +51,7 @@ public:
 		this->timeout = timeout;
 		this->tuple = new Tuple(tuple);
 	}
+	Request(Tuple * t, Request::ReqType, std::time_t timeout = 0);
 	Request(const Request & r);
 	~Request(){
 		if(tuple != nullptr)
