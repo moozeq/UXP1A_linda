@@ -479,5 +479,6 @@ int main() {
 	}
 	if (sem_unlink(inFifoSemaphoreName) < 0)
 	        perror("sem_unlink(3) failed");
+	cout<<"Server stopped"<<endl;
 	return 0;
 }

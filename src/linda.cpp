@@ -170,3 +170,9 @@ Reply linda_read(const std::initializer_list<Elem> & init, std::time_t timeout)
 	delete req;
 	return rep;
 }
+
+int linda_terminate_server()
+{
+	Request req(getpid(), 0, Request::Stop, Tuple());
+	return linda_output(&req);
+}

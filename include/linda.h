@@ -138,3 +138,11 @@ Reply linda_read(Tuple tuple, std::time_t timeout);
  */
 Reply linda_read(const std::initializer_list<Elem> & init, std::time_t timeout);
 
+
+/**
+ * 	@brief	This function send stop request to the server
+ *
+ * 	@return 0 if stop request succesfully sent
+ */
+int linda_terminate_server();
+
