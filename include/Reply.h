@@ -11,19 +11,23 @@
 class Reply
 {
 public:
-	bool isFound;
-	const Tuple* tuple;
 	friend std::ostream& operator<<(std::ostream &os, const Reply& rep);
 	friend std::istream& operator>>(std::istream &is, Reply& rep);
 	Reply() {
 		isFound = false;
 		tuple = new Tuple();
 	}
+	Reply(const Reply & other){
+		this->isFound = other.isFound;
+		this->tuple = new Tuple(*(other.tuple));
+	}
 	~Reply(){
 		if(tuple != nullptr)
 			delete tuple;
 	}
-
 	void setTuple(const Tuple * _tuple);
+
+	bool isFound;
+	const Tuple* tuple;
 };
 #endif /* REPLY_H_ */
