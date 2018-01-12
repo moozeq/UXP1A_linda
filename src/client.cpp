@@ -41,12 +41,39 @@ int main() {
 			break;
 		}
 		switch (req->reqType) {
-		case Request::Input:
-			linda_input(req); break;
-		case Request::Output:
-			linda_output(req); break;
-		case Request::Read:
-			linda_read(req); break;
+		case Request::Input:{
+			cout<<"Input request has been sent with timeout: "<< req->timeout <<endl;
+			cout<<"Tuple: "<<endl;
+			cout<<*(req->tuple)<<endl;
+			Reply rep = linda_input(req);
+			if(rep.isFound){
+				cout<<"Requested tuple popped from tuple space:"<<endl;
+				cout<<*(rep.tuple)<<endl;
+			}
+			else
+				cout<<"Requested tuple not found..."<<endl;
+			break;
+		}
+		case Request::Output:{
+			cout<<"Output request has been sent"<<endl;
+			cout<<"Tuple: "<<endl;
+			cout<<*(req->tuple)<<endl;
+			linda_output(req);
+			break;
+		}
+		case Request::Read:{
+			cout<<"Read request has been sent with timeout: "<< req->timeout <<endl;
+			cout<<"Tuple: "<<endl;
+			cout<<*(req->tuple)<<endl;
+			Reply rep = linda_read(req);
+			if(rep.isFound){
+				cout<<"Requested tuple popped from tuple space:"<<endl;
+				cout<<*(rep.tuple)<<endl;
+			}
+			else
+				cout<<"Requested tuple not found..."<<endl;
+			break;
+		}
 		default:
 			break;
 		}
