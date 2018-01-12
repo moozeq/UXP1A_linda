@@ -42,27 +42,4 @@ bool operator!=(const Tuple & first, const Tuple & second);
  */
 std::ostream & operator<<(std::ostream & os, const Tuple & tuple);
 
-/**
- *	@brief	Struct which provides functor - hash function
- *	for std::unordered_set tuple space.
- */
-namespace std
-{
-    template <>
-    struct hash<Tuple>
-    {
-        size_t operator()(const Tuple& t) const
-        {
-            size_t hashValue = t.elems.size();
-            int counter = 0;
-            for(const Elem & e : t.elems)
-            {
-            	hashValue |= ((int)e.isString << (counter%32));
-            	++counter;
-            }
-            return hashValue;
-        }
-    };
-}
-
 #endif /* TUPLE_H_ */

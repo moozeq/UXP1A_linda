@@ -44,6 +44,13 @@ public:
 		timeout = 0;
 		tuple = new Tuple();
 	}
+	Request(pid_t pid, time_t timeout, Request::ReqType reqType, Tuple tuple)
+	{
+		this->procId = pid;
+		this->reqType = reqType;
+		this->timeout = timeout;
+		this->tuple = new Tuple(tuple);
+	}
 	Request(const Request & r);
 	~Request(){
 		if(tuple != nullptr)

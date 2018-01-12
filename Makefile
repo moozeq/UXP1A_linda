@@ -17,7 +17,7 @@ CFLAGS = -Wall $(INC) -std=c++11 -pthread
 # Project files
 #
 COMMONSRCS = $(SRC_DIR)/Tuple.cpp $(SRC_DIR)/Request.cpp $(SRC_DIR)/Reply.cpp $(SRC_DIR)/CommandParser.cpp
-CLIENTSRCS = $(COMMONSRCS) $(SRC_DIR)/client.cpp
+CLIENTSRCS = $(COMMONSRCS) $(SRC_DIR)/client.cpp $(SRC_DIR)/linda.cpp
 SERVERSRCS = $(COMMONSRCS) $(SRC_DIR)/server.cpp $(SRC_DIR)/GuardedQueue.cpp $(SRC_DIR)/GuardedList.cpp
 
 #
