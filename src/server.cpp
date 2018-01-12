@@ -329,7 +329,7 @@ void* readService(void *) {
 		}
 		else
 		{
-			Reply * reply = search(req->tuple, req->reqType);
+			reply = search(req->tuple, req->reqType);
 			if(!reply->isFound)		// if requested tuple found in tuple space
 			{
 				if(req->timeout > std::time(nullptr)){	// request is still valid (timout ok)
