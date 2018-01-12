@@ -12,6 +12,17 @@ Request::Request(const Request & r)
 }
 
 /**
+ * 	@ Constructor
+ */
+Request::Request(Tuple * t, Request::ReqType rType, std::time_t timeout)
+{
+	this->procId = getpid();
+	this->reqType = rType;
+	this->timeout = timeout;
+	this->tuple = t;
+}
+
+/**
  * 	@brief 	Gets data from the request and pushes it into ostream.
  *
  * 	@param	os is ostream object which data is pushed to

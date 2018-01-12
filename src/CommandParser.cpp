@@ -28,9 +28,9 @@ bool CommandParser::checkIfExit(string line) {
 void CommandParser::changeToDefSendRcvMessage(std::string & command)
 {
 	if(command == "ds")			//default send
-		command = "output(integer:13,string:\"siema\")";
+		command = "output(integer:13,string:\"debugTuple\")";
 	else if(command == "dr")	//default receive
-		command = "input(integer:13,string:\"siema\",100)";
+		command = "input(integer:13,string:\"debugTuple\",10)";
 }
 
 

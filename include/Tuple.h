@@ -25,7 +25,7 @@ public:
 
 	Tuple(){}
 	Tuple(const Tuple & t);
-	Tuple(std::initializer_list<Elem> init) : elems(init)	{}
+	Tuple(const std::initializer_list<Elem> & init) : elems(init)	{}
 	Tuple & operator=(const Tuple & t);
 	const size_t getHash() const;
 };
