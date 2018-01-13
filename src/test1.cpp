@@ -13,14 +13,37 @@
 using namespace std;
 
 bool terminateProcess = false;
+pid_t parent_pid;
 
 void sig_handler(int sig, siginfo_t *siginfo, void *context) {
 	if(sig == SIGINT)
-		terminateProcess = true;
+	{
+		if(parent_pid != getpid())
+		{
+			linda_unlink_client_fifo();
+			cout<<"Process "<<getpid()<<" exiting..."<<endl;
+			exit(0);
+		}
+	}
 }
 
+void setSigint(void)
+{
+	struct sigaction newAction;
+	newAction.sa_sigaction = &sig_handler;
+	newAction.sa_flags = SA_SIGINFO;
+	if (sigaction(SIGINT, &newAction, NULL) < 0) {
+		perror ("sigaction");
+	}
+}
+
+/**
+ * 	@brief	Producer process produces tuples with one element which is integer
+ * 	in range <0; 100> every second.
+ */
 int producerF(void)
 {
+	setSigint();
 	std::srand(std::time(nullptr));
 	while(!terminateProcess)
 	{
@@ -29,11 +52,16 @@ int producerF(void)
 		cout<<"Producer, tuple's been sent"<<endl;
 		sleep(1);
 	}
-	exit(0);
+	return 0;
 }
 
+/**
+ * 	@brief	Consumer1 requests for tuples with one element which is integer <= 50
+ * 	(takes half of producer's tuples) every 2 seconds.
+ */
 int consumer1F(void)
 {
+	setSigint();
 	cout<<"Consumer1 enter"<<endl;
 	while(!terminateProcess)
 	{
@@ -44,11 +72,16 @@ int consumer1F(void)
 			cout<<"\tConsumer 1, empty reply..."<<endl;
 		sleep(2);
 	}
-	exit(0);
+	return 0;
 }
 
+/**
+ * 	@brief	Consumer2 requests for tuples with one element which is integer > 50
+ * 	(takes half of producer's tuples) every 2 seconds.
+ */
 int consumer2F(void)
 {
+	setSigint();
 	cout<<"Consumer2 enter"<<endl;
 	while(!terminateProcess)
 	{
@@ -59,22 +92,28 @@ int consumer2F(void)
 			cout<<"\t\tConsumer 2, empty reply..."<<endl;
 		sleep(2);
 	}
-	exit(0);
+	return 0;
 }
 
+/**
+ * 	@brief	Consumer3 requests for tuples with one element which is integer > 95
+ * 	every 2 seconds. It tries to get tuple despite of the fact that consumer1 and
+ * 	consumer2 cover all produced tuples
+ */
 int consumer3F(void)
 {
+	setSigint();
 	cout<<"Consumer3 enter"<<endl;
 	while(!terminateProcess)
 	{
-		Reply r = linda_input(Tuple({{false, std::string("13")}}), 10);
+		Reply r = linda_input(Tuple({{false, std::string(">95")}}), 10);
 		if(r.isFound)
 			cout<<"\t\t\tConsumer 3, tuple received: "<<r.tuple->elems.at(0).pattern<<endl;
 		else
 			cout<<"\t\t\tConsumer 3, empty reply..."<<endl;
 		sleep(2);
 	}
-	exit(0);
+	return 0;
 }
 
 typedef int (*ProcFunc)(void);
@@ -82,15 +121,13 @@ typedef int (*ProcFunc)(void);
 int main() {
 
 	struct sigaction newAction;
-	newAction.sa_sigaction = &sig_handler;
-	newAction.sa_flags = SA_SIGINFO;
+	newAction.sa_handler = SIG_IGN;
 	if (sigaction(SIGINT, &newAction, NULL) < 0) {
-			perror ("sigaction");
-			return 1;
-		}
+		perror ("sigaction");
+		return 1;
+	}
 
-
-	pid_t parent_pid = getpid();
+	parent_pid = getpid();
 	pid_t server = -1;
 	pid_t pids[4];
 	ProcFunc functions[4] = {producerF, consumer1F, consumer2F, consumer3F};
@@ -125,22 +162,19 @@ int main() {
 		        functions[i]();
 		        exit(0);
 		    } else  {
-		        wait(NULL);
+		    	if(parent_pid == getpid() && i == 3)
+		    	{
+		    		wait(NULL);
+		    		cout<<"Terminating server"<<endl;
+		    		linda_terminate_server();
+		    		cout<<"Server terminate message sent"<<endl;
+		    	}
 		    }
 		}
 	}
 
-	sleep(1);
-
 	if(parent_pid == getpid())
-	{
-		for(int i = 0; i < 4; ++i)
-			waitpid(pids[i], NULL, 0);
-		linda_terminate_server();
-	}
-
-	if(parent_pid == getpid())
-		cout<<"Proces macierzysty"<<endl;
+		cout<<"Proces macierzysty "<<getpid()<<" konczy..."<<endl;
 //	// Another usage
 //	linda_output({{true, std::string("drugaKrotka")},
 //		{true, std::string("testowa")},{false, std::string("19")}, {true, std::string("koniec")}});
@@ -148,6 +182,6 @@ int main() {
 //	// Another usage
 //	linda_output(Tuple({{true, string("prostaKrotka")}}));
 
-	cout<<"Process" << getpid() << " exited" << endl;
+	cout<<"Process "<<getpid()<<" exiting at the end..."<<endl;
 	return 0;
 }

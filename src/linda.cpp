@@ -176,3 +176,12 @@ int linda_terminate_server()
 	Request req(getpid(), 0, Request::Stop, Tuple());
 	return linda_output(&req);
 }
+
+void linda_unlink_client_fifo()
+{
+	std::string pipePath = "/tmp/fifo.";
+	pipePath.append(std::to_string(getpid()));
+
+	if(access(pipePath.c_str(), F_OK) != -1)
+		unlink(pipePath.c_str());
+}

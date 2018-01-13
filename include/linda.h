@@ -146,3 +146,5 @@ Reply linda_read(const std::initializer_list<Elem> & init, std::time_t timeout);
  */
 int linda_terminate_server();
 
+
+void linda_unlink_client_fifo();
