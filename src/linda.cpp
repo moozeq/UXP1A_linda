@@ -94,7 +94,9 @@ const Reply * read(const Request * req)
 Reply linda_input(const Request * req)
 {
 	const Reply * rPtr = input(req);
-	Reply rep(*rPtr);
+	Reply rep;
+	if(rPtr != nullptr)
+		rep = *rPtr;
 	delete rPtr;
 	return rep;
 }
@@ -102,8 +104,10 @@ Reply linda_input(const Request * req)
 Reply linda_input(Tuple tuple, std::time_t timeout)
 {
 	Request * req = new Request(getpid(), timeout, Request::Input, tuple);
+	Reply rep;
 	const Reply * rPtr = input(req);
-	Reply rep(*rPtr);
+	if(rPtr != nullptr)
+		rep = *rPtr;
 	delete rPtr;
 	delete req;
 	return rep;
@@ -113,8 +117,10 @@ Reply linda_input(const std::initializer_list<Elem> & init, std::time_t timeout)
 {
 	Tuple * t = new Tuple(init);
 	Request * req = new Request(t, Request::Input, timeout);
+	Reply rep;
 	const Reply * rPtr = input(req);
-	Reply rep(*rPtr);
+	if(rPtr != nullptr)
+		rep = *rPtr;
 	delete rPtr;
 	delete req;
 	return rep;
@@ -145,7 +151,9 @@ int linda_output(const std::initializer_list<Elem> & init)
 Reply linda_read(Request * req)
 {
 	const Reply * rPtr = read(req);
-	Reply rep(*rPtr);
+	Reply rep;
+	if(rPtr != nullptr)
+		rep = *rPtr;
 	delete rPtr;
 	return rep;
 }
@@ -153,8 +161,10 @@ Reply linda_read(Request * req)
 Reply linda_read(Tuple tuple, std::time_t timeout)
 {
 	Request * req = new Request(getpid(), timeout, Request::Read, tuple);
+	Reply rep;
 	const Reply * rPtr = read(req);
-	Reply rep(*rPtr);
+	if(rPtr != nullptr)
+		rep = *rPtr;
 	delete rPtr;
 	delete req;
 	return rep;
@@ -164,8 +174,10 @@ Reply linda_read(const std::initializer_list<Elem> & init, std::time_t timeout)
 {
 	Tuple * t = new Tuple(init);
 	Request * req = new Request(t, Request::Read, timeout);
+	Reply rep;
 	const Reply * rPtr = read(req);
-	Reply rep(*rPtr);
+	if(rPtr != nullptr)
+		rep = *rPtr;
 	delete rPtr;
 	delete req;
 	return rep;

@@ -25,6 +25,7 @@ public:
 		if(tuple != nullptr)
 			delete tuple;
 	}
+	Reply & operator=(const Reply & other);
 	void setTuple(const Tuple * _tuple);
 
 	bool isFound;

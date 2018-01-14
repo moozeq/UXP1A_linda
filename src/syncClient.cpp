@@ -3,7 +3,6 @@
 #include <wait.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <string.h>
 #include <fcntl.h>
 #include <fstream>
 #include <stdlib.h>
@@ -21,16 +20,10 @@ void sig_handler(int signo) {
 }
 
 struct GuardedCout{
-	// based on https://stackoverflow.com/questions/18277304/using-stdcout-in-multiple-threads
+
 	GuardedCout()
 	{
 		init();
-	}
-
-	~GuardedCout()
-	{
-		if (sem_unlink(semName) < 0)
-			perror("sem_unlink(3) failed");
 	}
 
 	std::ostream&
@@ -86,10 +79,7 @@ private:
 	const char * semName = "lindaClientSemaphore";
 };
 
-int main(int argc, char * argv[]) {
-	bool showCommandsInTerminal = true;
-	if(argc > 1 && strcmp(argv[1], "-nocommands") == 0)
-		showCommandsInTerminal = false;
+int main() {
 
 	signal(SIGINT, sig_handler);
 
@@ -100,8 +90,7 @@ int main(int argc, char * argv[]) {
 		Request *req = new Request();
 		bool correct = false;
 		do {
-			if(showCommandsInTerminal)
-				CommandParser::showOptions();
+			CommandParser::showOptions();
 			string line;
 			getline(cin, line);
 			exit = CommandParser::checkIfExit(line);
@@ -142,7 +131,7 @@ int main(int argc, char * argv[]) {
 			gCout.print(*(req->tuple), "\n");
 			Reply rep = linda_read(req);
 			if(rep.isFound){
-				gCout.print("Requested tuple read from tuple space:\n");
+				gCout.print("Requested tuple popped from tuple space:\n");
 				gCout.print(*(rep.tuple), "\n");
 			}
 			else
@@ -155,6 +144,13 @@ int main(int argc, char * argv[]) {
 
 		delete req;
 	}
+
+	// Another usage
+	linda_output({{true, std::string("drugaKrotka")},
+		{true, std::string("testowa")},{false, std::string("19")}, {true, std::string("koniec")}});
+
+	// Another usage
+	linda_output(Tuple({{true, string("prostaKrotka")}}));
 
 	gCout.print("Client ", getpid(), " exited\n");
 	return 0;

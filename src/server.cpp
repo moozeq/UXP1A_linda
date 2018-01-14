@@ -202,6 +202,8 @@ bool checkPattern(Elem elemFromSpace, Elem elemPattern) {
  * 	@return	true if selected tuple matches pattern tuple
  */
 bool tuplesMatch(const Tuple & selTuple, const Tuple & patternTuple) {
+	if(selTuple.elems.size() != patternTuple.elems.size())
+		return false;
 	for (unsigned i = 0; i < patternTuple.elems.size(); ++i) {
 			if (!checkPattern(selTuple.elems[i], patternTuple.elems[i]))
 				return false;

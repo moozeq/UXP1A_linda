@@ -41,6 +41,17 @@ std::istream& operator>>(std::istream &is, Reply& rep) {
 }
 
 /**
+ * 	@brief	operator=() for Reply type
+ */
+Reply & Reply::operator=(const Reply & other)
+{
+	this->isFound = other.isFound;
+	delete this->tuple;
+	this->tuple = new Tuple(*(other.tuple));
+	return *this;
+}
+
+/**
  * 	@brief	Sets new Tuple object to the Reply
  *
  * 	@param	tuple is Tuple object which is assigned to this reply.

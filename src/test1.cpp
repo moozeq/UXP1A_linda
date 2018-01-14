@@ -166,7 +166,7 @@ int main() {
 		    	{
 		    		wait(NULL);
 		    		cout<<"Terminating server"<<endl;
-		    		linda_terminate_server();
+		    		//linda_terminate_server();
 		    		cout<<"Server terminate message sent"<<endl;
 		    	}
 		    }
@@ -175,12 +175,6 @@ int main() {
 
 	if(parent_pid == getpid())
 		cout<<"Proces macierzysty "<<getpid()<<" konczy..."<<endl;
-//	// Another usage
-//	linda_output({{true, std::string("drugaKrotka")},
-//		{true, std::string("testowa")},{false, std::string("19")}, {true, std::string("koniec")}});
-//
-//	// Another usage
-//	linda_output(Tuple({{true, string("prostaKrotka")}}));
 
 	cout<<"Process "<<getpid()<<" exiting at the end..."<<endl;
 	return 0;

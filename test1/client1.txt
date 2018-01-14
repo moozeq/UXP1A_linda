@@ -1,0 +1,4 @@
+output(integer:27, string:"test")
+read(string:"Bialystok", integer:7)
+output(integer:-1, integer:8)
+exit
