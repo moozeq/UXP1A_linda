@@ -17,6 +17,10 @@ public:
 		isString(_isString), pattern(_pattern)	{}
 	Elem(bool _isString, char* _pattern) :
 		isString(_isString), pattern(_pattern)	{}
+	Elem(int _pattern) :
+			isString(false), pattern(std::to_string(_pattern))	{}
+	Elem(std::string _pattern) :
+			isString(true), pattern(_pattern)	{}
 };
 
 #endif /* INCLUDE_ELEM_H_ */

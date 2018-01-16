@@ -19,7 +19,7 @@ CFLAGS = -Wall $(INC) -std=c++11 -pthread
 COMMONSRCS = $(SRC_DIR)/Tuple.cpp $(SRC_DIR)/Request.cpp $(SRC_DIR)/Reply.cpp $(SRC_DIR)/CommandParser.cpp
 CLIENTSRCS = $(COMMONSRCS) $(SRC_DIR)/client.cpp $(SRC_DIR)/linda.cpp
 SERVERSRCS = $(COMMONSRCS) $(SRC_DIR)/server.cpp $(SRC_DIR)/GuardedQueue.cpp $(SRC_DIR)/GuardedList.cpp
-TESTSSRCS = $(COMMONSRCS) $(SRC_DIR)/test1.cpp $(SRC_DIR)/linda.cpp
+TESTSSRCS = $(COMMONSRCS) $(SRC_DIR)/tests.cpp $(SRC_DIR)/test1.cpp $(SRC_DIR)/test2.cpp $(SRC_DIR)/linda.cpp
 
 #
 # Object files
@@ -29,7 +29,7 @@ SERVEROBJS = $(SERVERSRCS:.cpp=.o)
 TESTSOBJS = $(TESTSSRCS:.cpp=.o)
 CLIENTEXE  = client
 SERVEREXE = server
-TESTSEXE = test1
+TESTSEXE = tests
 
 #
 # Debug build settings
