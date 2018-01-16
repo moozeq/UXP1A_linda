@@ -9,11 +9,14 @@
 #include <iostream>
 #include <signal.h>
 #include "linda.h"
+#include "GuardedCout.h"
 
 using namespace std;
 
 bool terminateProcess = false;
 pid_t parent_pid;
+
+GuardedCout gCout("Test1CppSemaphoreName");
 
 void sig_handler(int sig, siginfo_t *siginfo, void *context) {
 	if(sig == SIGINT)
@@ -21,7 +24,7 @@ void sig_handler(int sig, siginfo_t *siginfo, void *context) {
 		if(parent_pid != getpid())
 		{
 			linda_unlink_client_fifo();
-			cout<<"Process "<<getpid()<<" exiting..."<<endl;
+			gCout.print("Process ", getpid(), " exiting...\n");
 			exit(0);
 		}
 	}
@@ -49,7 +52,7 @@ int producerF(void)
 	{
 		int rand_0_100 = ( std::rand() % ( 101 ) );
 		linda_output(Tuple({{false, std::to_string(rand_0_100)}}));
-		cout<<"Producer, tuple's been sent"<<endl;
+		gCout.print("Producer, tuple's been sent\n");
 		sleep(1);
 	}
 	return 0;
@@ -62,14 +65,14 @@ int producerF(void)
 int consumer1F(void)
 {
 	setSigint();
-	cout<<"Consumer1 enter"<<endl;
+	gCout.print("Consumer1 enter\n");
 	while(!terminateProcess)
 	{
 		Reply r = linda_input(Tuple({{false, std::string("<=50")}}), 10);
 		if(r.isFound)
-			cout<<"\tConsumer 1, tuple received: "<<r.tuple->elems.at(0).pattern<<endl;
+			gCout.print("\tConsumer 1, tuple received: ", r.tuple->elems.at(0).pattern, "\n");
 		else
-			cout<<"\tConsumer 1, empty reply..."<<endl;
+			gCout.print("\tConsumer 1, empty reply...\n");
 		sleep(2);
 	}
 	return 0;
@@ -82,14 +85,14 @@ int consumer1F(void)
 int consumer2F(void)
 {
 	setSigint();
-	cout<<"Consumer2 enter"<<endl;
+	gCout.print("Consumer2 enter\n");
 	while(!terminateProcess)
 	{
 		Reply r = linda_input(Tuple({{false, std::string(">50")}}), 10);
 		if(r.isFound)
-			cout<<"\t\tConsumer 2, tuple received: "<<r.tuple->elems.at(0).pattern<<endl;
+			gCout.print("\t\tConsumer 2, tuple received: ", r.tuple->elems.at(0).pattern, "\n");
 		else
-			cout<<"\t\tConsumer 2, empty reply..."<<endl;
+			gCout.print("\t\tConsumer 2, empty reply...\n");
 		sleep(2);
 	}
 	return 0;
@@ -103,14 +106,14 @@ int consumer2F(void)
 int consumer3F(void)
 {
 	setSigint();
-	cout<<"Consumer3 enter"<<endl;
+	gCout.print("Consumer3 enter\n");
 	while(!terminateProcess)
 	{
 		Reply r = linda_input(Tuple({{false, std::string(">95")}}), 10);
 		if(r.isFound)
-			cout<<"\t\t\tConsumer 3, tuple received: "<<r.tuple->elems.at(0).pattern<<endl;
+			gCout.print("\t\t\tConsumer 3, tuple received: ", r.tuple->elems.at(0).pattern, "\n");
 		else
-			cout<<"\t\t\tConsumer 3, empty reply..."<<endl;
+			gCout.print("\t\t\tConsumer 3, empty reply...\n");
 		sleep(2);
 	}
 	return 0;
@@ -155,27 +158,26 @@ int main() {
 		for(int i = 0; i < 4; i++) {
 		    pids[i] = fork();
 		    if(pids[i] < 0) {
-		        cout<<"Error while fork()"<<endl;
+		    	gCout.print("Error in fork()\n");
 		        exit(1);
 		    } else if (pids[i] == 0) {
-		        printf("Child (%d): %d\n", i + 1, getpid());
 		        functions[i]();
 		        exit(0);
 		    } else  {
 		    	if(parent_pid == getpid() && i == 3)
 		    	{
 		    		wait(NULL);
-		    		cout<<"Terminating server"<<endl;
+		    		gCout.print("Terminating server\n");
 		    		//linda_terminate_server();
-		    		cout<<"Server terminate message sent"<<endl;
+		    		gCout.print("Server terminate message sent\n");
 		    	}
 		    }
 		}
 	}
 
 	if(parent_pid == getpid())
-		cout<<"Proces macierzysty "<<getpid()<<" konczy..."<<endl;
+		gCout.print("Proces macierzysty ", getpid(), " konczy...\n");
 
-	cout<<"Process "<<getpid()<<" exiting at the end..."<<endl;
+	gCout.print("Process ", getpid(), " exiting at the end...\n");
 	return 0;
 }
