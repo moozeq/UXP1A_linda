@@ -32,7 +32,7 @@ bool operator!=(const Tuple & first, const Tuple & second){
 std::ostream & operator<<(std::ostream & os, const Tuple & tuple)
 {
 	for(const Elem & e : tuple.elems)
-		os << std::boolalpha << e.isString << ", " << e.pattern << std::endl;
+		os << (e.isString == true? "string:" : "integer:") << ", " << e.pattern << std::endl;
 	return os;
 }
 

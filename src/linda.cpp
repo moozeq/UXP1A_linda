@@ -27,11 +27,11 @@ void sendRequest(std::ofstream * outStream, sem_t * semaphore, const Request * r
 		perror("sem_post(3) error on child");
 }
 
-void input(const Request * req)
+const Reply * input(const Request * req)
 {
 	sem_t * serverFifoSemaphore;
 	if (init(&serverFifoSemaphore) != 0)
-		return;
+		return nullptr;
 	std::ofstream outFIFO(serverPath, std::ofstream::binary);
 	std::string pipePath = "/tmp/fifo.";
 	pipePath.append(std::to_string(getpid()));
@@ -40,46 +40,37 @@ void input(const Request * req)
 
 	sendRequest(&outFIFO, serverFifoSemaphore, req);
 
-	std::cout<<"Request for tuple has been sent"<<std::endl;
-
 	// Get reply from server
 	Reply* rep = new Reply();
 	std::ifstream inFIFO(pipePath.c_str(), std::ifstream::binary);
 	std::ofstream outClientTmpFifo(pipePath, std::ofstream::binary);
-	std::cout<<"Waiting for reply..."<<std::endl;
 	inFIFO >> *rep;
 
-	if (rep->isFound) {
-		std::cout<<"Replied tuple: "<<std::endl;
-		std::cout<<*(rep->tuple);
-	}
-	else
-		std::cout<<"Didn't find demanded tuple"<<std::endl;
-	delete rep;
 	unlink(pipePath.c_str());
 	if (sem_close(serverFifoSemaphore) < 0)
 		perror("sem_close(3) failed");
+	return rep;
 }
 
-void output(const Request * req)
+int output(const Request * req)
 {
 	sem_t * serverFifoSemaphore;
 	if (init(&serverFifoSemaphore) != 0)
-		return;
+		return -1;
 	std::ofstream outFIFO(serverPath, std::ofstream::binary);
 
 	sendRequest(&outFIFO, serverFifoSemaphore,req);
 
-	std::cout<<"Tuple's been sent"<<std::endl;
 	if (sem_close(serverFifoSemaphore) < 0)
 		perror("sem_close(3) failed");
+	return 0;
 }
 
-void read(const Request * req)
+const Reply * read(const Request * req)
 {
 	sem_t * serverFifoSemaphore;
 	if (init(&serverFifoSemaphore) != 0)
-		return;
+		return nullptr;
 	std::ofstream outFIFO(serverPath, std::ofstream::binary);
 	std::string pipePath = "/tmp/fifo.";
 	pipePath.append(std::to_string(getpid()));
@@ -88,83 +79,121 @@ void read(const Request * req)
 
 	sendRequest(&outFIFO, serverFifoSemaphore,req);
 
-	std::cout<<"Request for tuple has been sent"<<std::endl;
-
 	// Get reply from server
 	Reply* rep = new Reply();
 	std::ifstream inFIFO(pipePath.c_str(), std::ifstream::binary);
 	std::ofstream outClientTmpFifo(pipePath, std::ofstream::binary);
-	std::cout<<"Waiting for reply..."<<std::endl;
 	inFIFO >> *rep;
 
-	if (rep->isFound) {
-		std::cout<<"Replied tuple: "<<std::endl;
-		std::cout<<*(rep->tuple);
-	}
-	else
-		std::cout<<"Didn't find demanded tuple"<<std::endl;
-	delete rep;
 	unlink(pipePath.c_str());
 	if (sem_close(serverFifoSemaphore) < 0)
 		perror("sem_close(3) failed");
+	return rep;
 }
 
-void linda_input(const Request * req)
+Reply linda_input(const Request * req)
 {
-	input(req);
+	const Reply * rPtr = input(req);
+	Reply rep;
+	if(rPtr != nullptr)
+		rep = *rPtr;
+	delete rPtr;
+	return rep;
 }
 
-void linda_input(Tuple tuple, std::time_t timeout)
+Reply linda_input(Tuple tuple, std::time_t timeout)
 {
 	Request * req = new Request(getpid(), timeout, Request::Input, tuple);
-	input(req);
+	Reply rep;
+	const Reply * rPtr = input(req);
+	if(rPtr != nullptr)
+		rep = *rPtr;
+	delete rPtr;
 	delete req;
+	return rep;
 }
 
-void linda_input(const std::initializer_list<Elem> & init, std::time_t timeout)
+Reply linda_input(const std::initializer_list<Elem> & init, std::time_t timeout)
 {
 	Tuple * t = new Tuple(init);
 	Request * req = new Request(t, Request::Input, timeout);
-	input(req);
+	Reply rep;
+	const Reply * rPtr = input(req);
+	if(rPtr != nullptr)
+		rep = *rPtr;
+	delete rPtr;
 	delete req;
+	return rep;
 }
 
-void linda_output(const Request * req)
+int linda_output(const Request * req)
 {
-	output(req);
+	return output(req);
 }
 
-void linda_output(Tuple tuple)
+int linda_output(Tuple tuple)
 {
 	Request * req = new Request(getpid(), 0, Request::Output, tuple);
-	output(req);
+	int status = output(req);
 	delete req;
+	return status;
 }
 
-void linda_output(const std::initializer_list<Elem> & init)
+int linda_output(const std::initializer_list<Elem> & init)
 {
 	Tuple * t = new Tuple(init);
 	Request * req = new Request(t, Request::Output, 0);
-	output(req);
+	int status = output(req);
 	delete req;
+	return status;
 }
 
-void linda_read(Request * req)
+Reply linda_read(Request * req)
 {
-	input(req);
+	const Reply * rPtr = read(req);
+	Reply rep;
+	if(rPtr != nullptr)
+		rep = *rPtr;
+	delete rPtr;
+	return rep;
 }
 
-void linda_read(Tuple tuple, std::time_t timeout)
+Reply linda_read(Tuple tuple, std::time_t timeout)
 {
 	Request * req = new Request(getpid(), timeout, Request::Read, tuple);
-	read(req);
+	Reply rep;
+	const Reply * rPtr = read(req);
+	if(rPtr != nullptr)
+		rep = *rPtr;
+	delete rPtr;
 	delete req;
+	return rep;
 }
 
-void linda_read(const std::initializer_list<Elem> & init, std::time_t timeout)
+Reply linda_read(const std::initializer_list<Elem> & init, std::time_t timeout)
 {
 	Tuple * t = new Tuple(init);
 	Request * req = new Request(t, Request::Read, timeout);
-	read(req);
+	Reply rep;
+	const Reply * rPtr = read(req);
+	if(rPtr != nullptr)
+		rep = *rPtr;
+	delete rPtr;
 	delete req;
+	return rep;
+}
+
+int linda_terminate_server()
+{
+	Request req(getpid(), 0, Request::Stop, Tuple());
+	return linda_output(&req);
+}
+
+void linda_unlink_client_fifo()
+{
+	std::string pipePath = "/tmp/fifo.";
+	pipePath.append(std::to_string(getpid()));
+
+	if(access(pipePath.c_str(), F_OK) != -1)
+		unlink(pipePath.c_str());
 }

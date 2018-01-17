@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <string.h>
 #include <vector>
 #include <signal.h>
 #include <pthread.h>
@@ -34,9 +35,15 @@ unordered_multimap<size_t, Tuple> tupleSpace; //Global tuple space
 
 void sig_handler(int signo) {
 	if(signo == SIGINT) {
+		if (sem_wait(inputFifoSemaphore) < 0)
+			perror("sem_wait(3) failed on child");
 		unlink(serverPath);
+		if (sem_post(inputFifoSemaphore) < 0)
+			perror("sem_post(3) error on child");
+
 		logFile<<"Server's pipe's been unlinked"<<endl;
 		logFile.close();
+		exit(0);
 	}
 }
 
@@ -56,7 +63,8 @@ void sendRequest(ofstream * outStream, sem_t * semaphore, const Request * req)
 		perror("sem_post(3) error on child");
 }
 
-int init() {
+int init(bool noSigint) {
+	logFile.open(logFileName, ios::out);
 	pid_t serverPid = getpid();
 	logFile<<"Server's starting..."<<endl<<"Server's PID: "<<serverPid<<endl;
 
@@ -74,11 +82,15 @@ int init() {
 	        exit(EXIT_FAILURE);
 	}
 
-	signal(SIGINT, sig_handler);
+	if(!noSigint)
+	{
+		signal(SIGINT, sig_handler);
+		logFile << "SIGINT handler attached"<<endl;
+	}
 	createServerPipe(serverPath);
-	logFile.open(logFileName, ios::out);
 	return 0;
 }
+
 /*
  * @brief checks sign before string/integer
  *
@@ -191,6 +203,8 @@ bool checkPattern(Elem elemFromSpace, Elem elemPattern) {
  * 	@return	true if selected tuple matches pattern tuple
  */
 bool tuplesMatch(const Tuple & selTuple, const Tuple & patternTuple) {
+	if(selTuple.elems.size() != patternTuple.elems.size())
+		return false;
 	for (unsigned i = 0; i < patternTuple.elems.size(); ++i) {
 			if (!checkPattern(selTuple.elems[i], patternTuple.elems[i]))
 				return false;
@@ -330,7 +344,7 @@ void* readService(void *) {
 		else
 		{
 			reply = search(req->tuple, req->reqType);
-			if(!reply->isFound)		// if requested tuple found in tuple space
+			if(!reply->isFound)		// if requested tuple not found in tuple space
 			{
 				if(req->timeout > std::time(nullptr)){	// request is still valid (timout ok)
 					pendingRequests.push_back(req);
@@ -342,7 +356,7 @@ void* readService(void *) {
 					delete req;
 				}
 			}
-			else					// tuple not found in tuple space
+			else					// tuple found in tuple space
 			{
 				sendReplyToClient(reply, req->procId);
 				delete req;
@@ -412,8 +426,13 @@ void sendUpdatePendingRequest(ofstream * os)
 	delete r;
 }
 
-int main() {
-	if (init() != 0)
+int main(int argc, char * argv[]) {
+
+	bool noSigint = false;
+	if(argc > 1 && strcmp(argv[1], "-nosigint") == 0)
+		noSigint = true;
+
+	if (init(noSigint) != 0)
 		return 0;
 
 	ifstream inFIFO(serverPath, ifstream::binary);
@@ -479,5 +498,6 @@ int main() {
 	}
 	if (sem_unlink(inFifoSemaphoreName) < 0)
 	        perror("sem_unlink(3) failed");
+	cout<<"Server stopped"<<endl;
 	return 0;
 }

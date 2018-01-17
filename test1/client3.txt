@@ -1,0 +1,3 @@
+read(integer:*, string:"*")
+output(string:"Bialystok", integer:7)
+exit
