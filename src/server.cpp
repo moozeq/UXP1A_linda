@@ -90,6 +90,7 @@ int init(bool noSigint) {
 	createServerPipe(serverPath);
 	return 0;
 }
+
 /*
  * @brief checks sign before string/integer
  *
@@ -343,7 +344,7 @@ void* readService(void *) {
 		else
 		{
 			reply = search(req->tuple, req->reqType);
-			if(!reply->isFound)		// if requested tuple found in tuple space
+			if(!reply->isFound)		// if requested tuple not found in tuple space
 			{
 				if(req->timeout > std::time(nullptr)){	// request is still valid (timout ok)
 					pendingRequests.push_back(req);
@@ -355,7 +356,7 @@ void* readService(void *) {
 					delete req;
 				}
 			}
-			else					// tuple not found in tuple space
+			else					// tuple found in tuple space
 			{
 				sendReplyToClient(reply, req->procId);
 				delete req;

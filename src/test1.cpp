@@ -22,7 +22,7 @@ extern void setSigint(void);
  * 	@brief	Producer process produces tuples with one element which is integer
  * 	in range <0; 100> every second.
  */
-int test1_producerF(void)
+int test1_producerF(int)
 {
 	setSigint();
 	std::srand(std::time(nullptr));
@@ -40,7 +40,7 @@ int test1_producerF(void)
  * 	@brief	Consumer1 requests for tuples with one element which is integer <= 50
  * 	(takes half of producer's tuples) every 2 seconds.
  */
-int test1_consumer1F(void)
+int test1_consumer1F(int)
 {
 	setSigint();
 	gCout.print("Consumer1 enter\n");
@@ -60,7 +60,7 @@ int test1_consumer1F(void)
  * 	@brief	Consumer2 requests for tuples with one element which is integer > 50
  * 	(takes half of producer's tuples) every 2 seconds.
  */
-int test1_consumer2F(void)
+int test1_consumer2F(int)
 {
 	setSigint();
 	gCout.print("Consumer2 enter\n");
@@ -81,7 +81,7 @@ int test1_consumer2F(void)
  * 	every 2 seconds. It tries to get tuple despite of the fact that consumer1 and
  * 	consumer2 cover all produced tuples
  */
-int test1_consumer3F(void)
+int test1_consumer3F(int)
 {
 	setSigint();
 	gCout.print("Consumer3 enter\n");

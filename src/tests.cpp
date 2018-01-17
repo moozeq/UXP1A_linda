@@ -41,9 +41,13 @@ void setSigint(void)
 	}
 }
 
-typedef int (*ProcFunc)(void);
+typedef int (*ProcFunc)(int);
 
-int main() {
+int main(int argc, char * argv[]) {
+
+	int testNumber = 0;
+	if(argc > 1)
+		testNumber = std::atoi(argv[1]);
 
 	struct sigaction newAction;
 	newAction.sa_handler = SIG_IGN;
@@ -55,17 +59,39 @@ int main() {
 	parent_pid = getpid();
 	pid_t server = -1;
 	vector<pid_t> pids;
-	// Wektor wskaźników do funkcji testu pierwszego
+
+	std::vector<std::vector<ProcFunc> *> tests;
+	// Vector of pointers to functions for test1, test2, etc...
 	std::vector<ProcFunc> test1Functions = {test1_producerF, test1_consumer1F, test1_consumer2F, test1_consumer3F};
-	// Wektor wskaźników do funkcji testu drugiego
 	std::vector<ProcFunc> test2Functions = {test2_client0, test2_client1, test2_client2, test2_client3};
-
 	std::vector<ProcFunc> test3Functions = {test3_client0, test3_client1, test3_client2, test3_client3};
+	// Vector of pointers to functions for test4
+	std::vector<ProcFunc> test4Functions;
+	for(unsigned i = 0; i < test4_tuples.size(); ++i)
+		test4Functions.push_back(test4_consumer);
+	test4Functions.push_back(test4_producer);
+	// Vector of pointers to functions for test5
+	std::vector<ProcFunc> test5Functions;
+	for(unsigned i = 0; i < test5_tuples.size()/2; ++i)
+		test5Functions.push_back(test5_patient_consumer);
+	for(unsigned i = 0; i < test5_tuples.size()/2; ++i)
+		test5Functions.push_back(test5_impatient_consumer);
+	test5Functions.push_back(test5_producer);
 
+	// Vector of vector of pointers to functions - for test selection
+	tests.push_back(&test1Functions);
+	tests.push_back(&test2Functions);
+	tests.push_back(&test3Functions);
+	tests.push_back(&test4Functions);
+	tests.push_back(&test5Functions);
+	// Choose test number according to input from user
+	std::vector<ProcFunc> * testFunctions;
+	if(unsigned(testNumber - 1) < tests.size())
+		testFunctions = tests.at(testNumber - 1);	// User give numbers from 1 to n, tests begin from 0
+	else
+		testFunctions = tests.at(0);
 
-	std::vector<ProcFunc> * testFunctions = &test3Functions;
-
-	// Tworzymy nowy proces i uruchamiamy serwer
+	// Create new process for server
 	server = fork();
 	if(server == 0)
 	{
@@ -91,19 +117,18 @@ int main() {
 		    	gCout.print("Error in fork()\n");
 		        exit(1);
 		    } else if (pids.at(i) == 0) {
-		    	testFunctions->at(i)();
+		    	testFunctions->at(i)(i);
 		        exit(0);
 		    } else  {
-		    	if(parent_pid == getpid() && i == 3)
+		    	// If is parent thread and forked all children then wait
+		    	if(parent_pid == getpid() && i == (testFunctions->size() - 1))
 		    	{
+		    		// Wait for all children threads
 		    		  for(i = 0; i < pids.size(); ++i)
 		    		  {
 		    		    wait(NULL);
 		    		    cout << "Got " << i+1 << " done" << endl;
 		    		  }
-//		    		gCout.print("Terminating server\n");
-		    		//linda_terminate_server();
-//		    		gCout.print("Server terminate message sent\n");
 		    	}
 		    }
 		}

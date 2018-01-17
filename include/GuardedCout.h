@@ -23,8 +23,7 @@ struct GuardedCout{
 
 	~GuardedCout()
 	{
-		if (sem_unlink(semName.c_str()) < 0)
-			perror("sem_unlink(3) failed");
+		sem_unlink(semName.c_str());
 	}
 
 	std::ostream&

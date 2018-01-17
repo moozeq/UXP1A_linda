@@ -21,7 +21,7 @@ extern void setSigint(void);
 std::vector<Tuple> test2_tuples = {Tuple({string("pierwszaKrotka")}),
 		Tuple({17}), Tuple({string("drugaKrotka"), 99}), Tuple({4, 677, string("krotkaKoncowa")})};
 
-int test2_client0(void)
+int test2_client0(int)
 {
 	setSigint();
 	int tupleNumber = 0;
@@ -39,7 +39,7 @@ int test2_client0(void)
 	return 0;
 }
 
-int test2_client1(void)
+int test2_client1(int)
 {
 	setSigint();
 	int tupleNumber = 1;
@@ -57,7 +57,7 @@ int test2_client1(void)
 	return 0;
 }
 
-int test2_client2(void)
+int test2_client2(int)
 {
 	setSigint();
 	int tupleNumber = 2;
@@ -75,7 +75,7 @@ int test2_client2(void)
 	return 0;
 }
 
-int test2_client3(void)
+int test2_client3(int)
 {
 	setSigint();
 	int tupleNumber = 3;
