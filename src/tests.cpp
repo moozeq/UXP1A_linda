@@ -55,10 +55,17 @@ int main() {
 	parent_pid = getpid();
 	pid_t server = -1;
 	vector<pid_t> pids;
+	// Wektor wskaźników do funkcji testu pierwszego
 	std::vector<ProcFunc> test1Functions = {test1_producerF, test1_consumer1F, test1_consumer2F, test1_consumer3F};
-	std::vector<ProcFunc> test2Functions = {test2_client1, test2_client2, test2_client3, test2_client4};
-	std::vector<ProcFunc> * testFunctions = &test2Functions;
+	// Wektor wskaźników do funkcji testu drugiego
+	std::vector<ProcFunc> test2Functions = {test2_client0, test2_client1, test2_client2, test2_client3};
 
+	std::vector<ProcFunc> test3Functions = {test3_client0, test3_client1, test3_client2, test3_client3};
+
+
+	std::vector<ProcFunc> * testFunctions = &test3Functions;
+
+	// Tworzymy nowy proces i uruchamiamy serwer
 	server = fork();
 	if(server == 0)
 	{
@@ -89,10 +96,14 @@ int main() {
 		    } else  {
 		    	if(parent_pid == getpid() && i == 3)
 		    	{
-		    		wait(NULL);
-		    		gCout.print("Terminating server\n");
+		    		  for(i = 0; i < pids.size(); ++i)
+		    		  {
+		    		    wait(NULL);
+		    		    cout << "Got " << i+1 << " done" << endl;
+		    		  }
+//		    		gCout.print("Terminating server\n");
 		    		//linda_terminate_server();
-		    		gCout.print("Server terminate message sent\n");
+//		    		gCout.print("Server terminate message sent\n");
 		    	}
 		    }
 		}
