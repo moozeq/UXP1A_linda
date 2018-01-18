@@ -27,10 +27,10 @@ const char* serverPath = "/tmp/fifo.server";
 const char * inFifoSemaphoreName = "/serverInFifoSemaphore";
 const char * logFileName = "Linda_server.log";
 ofstream logFile;
-GuardedQueue writeReqQueue;
-GuardedQueue readReqQueue;
-GuardedList pendingRequests;
-sem_t * inputFifoSemaphore;
+GuardedQueue writeReqQueue;			// Queue to write
+GuardedQueue readReqQueue;			// Queue to read
+GuardedList pendingRequests;		// Pending requests buffer
+sem_t * inputFifoSemaphore;			// Input fifo semaphore
 unordered_multimap<size_t, Tuple> tupleSpace; //Global tuple space
 
 void sig_handler(int signo) {
@@ -439,7 +439,9 @@ int main(int argc, char * argv[]) {
 	if (init(noSigint) != 0)
 		return 0;
 
+	// Input fifo for clients
 	ifstream inFIFO(serverPath, ifstream::binary);
+	// Output fifo to self threads
 	ofstream outServerTmpFifo(serverPath, ofstream::binary);
 
 	pthread_t recThread, readerThread, writerThread;
@@ -447,43 +449,12 @@ int main(int argc, char * argv[]) {
 	pthread_create(&readerThread, NULL, &readService, NULL);
 	pthread_create(&writerThread, NULL, &writeService, NULL);
 
-	struct termios oldSettings, newSettings;
-	tcgetattr( fileno( stdin ), &oldSettings );
-	newSettings = oldSettings;
-	newSettings.c_lflag &= (~ICANON & ~ECHO);
-	tcsetattr( fileno( stdin ), TCSANOW, &newSettings );
 	while(1)
 	{
-		// Timeout-ed keyboard reading based on http://www.cplusplus.com/forum/general/5304/#msg23940
-		fd_set set;
-		struct timeval tv;
-
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		FD_ZERO( &set );
-		FD_SET( fileno( stdin ), &set );
-
-		int res = select( fileno( stdin )+1, &set, NULL, NULL, &tv );
-		if( res > 0 )
-		{
-			char c;
-			read( fileno( stdin ), &c, 1 );
-			cin.clear();
-			if(c == 'q'){
-				printf("Server terminated by quit command...");
-				break;
-			}
-		}
-		else if( res < 0 )
-		{
-			perror( "select error" );
-			break;
-		}
 		sendUpdatePendingRequest(&outServerTmpFifo);
 		sleep(1);
 	}
 
-	tcsetattr( fileno( stdin ), TCSANOW, &oldSettings );
 	// Stop children threads - send Stop request
 	sendStopRequest(&outServerTmpFifo);
 
