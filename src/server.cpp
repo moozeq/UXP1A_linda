@@ -307,8 +307,12 @@ void sendReplyToClient(Reply * rep, unsigned procId)
 	clientFIFO.append(to_string(procId));
 	ofstream outFIFO(clientFIFO.c_str(), ofstream::binary);
 
-	outFIFO << *rep;
-	logFile<<"_____Reply to client"<<procId <<", has been sent"<<endl;
+	if(!outFIFO.fail()) {
+		outFIFO << *rep;
+		logFile<<"_____Reply to client"<<procId <<", has been sent"<<endl;
+	}
+	else
+		logFile<<"_____Cannot send reply to client "<<procId <<". client's FIFO is broken"<<endl;
 }
 
 void* readService(void *) {
