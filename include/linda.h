@@ -146,5 +146,8 @@ Reply linda_read(const std::initializer_list<Elem> & init, std::time_t timeout);
  */
 int linda_terminate_server();
 
-
+/**
+ * 	@brief Function which unlinks fifo created earlier by calling process.
+ * 	Used in signal handlers.
+ */
 void linda_unlink_client_fifo();
